@@ -1,7 +1,6 @@
 
 import { useState } from "react";
-import "./styles/opportunities.css";
-
+import "../styles/opportunities.css";
 const opportunities = [
   {
     id: 1,
