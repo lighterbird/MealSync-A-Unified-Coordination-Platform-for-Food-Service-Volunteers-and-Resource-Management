@@ -1,0 +1,43 @@
+# Secrets and local configuration
+.env
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Vite
+node_modules/
+dist/
+.vite/
+
+# Local databases, data and logs
+*.sqlite
+*.sqlite3
+*.db
+*.log
+instance/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# generated local intermediate assets, keep checked-in shared ER output
+
+directory_structure.json
+team_ownership.json
+docs/API.md
+docs/intermediate_submission_checklist.md
+docs/architecture.md
+docs/team_ownership.md
+docs/ER_diagram.svg
+.env.example
+SETUP.md

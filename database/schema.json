@@ -1,0 +1,2185 @@
+{
+  "project": "MealSync",
+  "schema_version": "1.0",
+  "database": "PostgreSQL",
+  "notes": [
+    "This JSON is the ER/documentation manifest consumed by render_er_diagram.py.",
+    "The production schema should be implemented through SQLAlchemy models and Flask-Migrate migrations; update this manifest and diagram whenever the model schema changes.",
+    "Role opt-in is represented by users + roles + user_roles. Kitchen and organization membership are separate authorization relationships.",
+    "external_opportunities are intentionally separate from events until a listing is reviewed/imported; no payment-card credentials are stored.",
+    "Matching recommendations can be computed dynamically; no persisted matches table is needed for the MVP."
+  ],
+  "tables": {
+    "locations": {
+      "description": "Reusable physical locations used by people, organizations, kitchens, and events.",
+      "attributes": [
+        "location_id",
+        "label",
+        "address_line",
+        "city",
+        "state",
+        "postal_code",
+        "country_code",
+        "latitude",
+        "longitude",
+        "created_at"
+      ],
+      "primary key": [
+        "location_id"
+      ],
+      "column_types": {
+        "location_id": "BIGSERIAL",
+        "label": "VARCHAR(120) NULL",
+        "address_line": "TEXT",
+        "city": "VARCHAR(100)",
+        "state": "VARCHAR(100)",
+        "postal_code": "VARCHAR(20) NULL",
+        "country_code": "CHAR(2) DEFAULT 'IN'",
+        "latitude": "NUMERIC(9,6) NULL",
+        "longitude": "NUMERIC(9,6) NULL",
+        "created_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "checks": [
+        "latitude IS NULL OR latitude BETWEEN -90 AND 90",
+        "longitude IS NULL OR longitude BETWEEN -180 AND 180"
+      ],
+      "phase": "MVP"
+    },
+    "users": {
+      "description": "A single account may opt into multiple roles; mealsync_id is the human-facing unique identifier used for referrals.",
+      "attributes": [
+        "user_id",
+        "mealsync_id",
+        "full_name",
+        "email",
+        "password_hash",
+        "phone",
+        "home_location_id",
+        "bio",
+        "is_active",
+        "created_at",
+        "updated_at"
+      ],
+      "primary key": [
+        "user_id"
+      ],
+      "column_types": {
+        "user_id": "BIGSERIAL",
+        "mealsync_id": "VARCHAR(32)",
+        "full_name": "VARCHAR(120)",
+        "email": "VARCHAR(254)",
+        "password_hash": "VARCHAR(255)",
+        "phone": "VARCHAR(30) NULL",
+        "home_location_id": "BIGINT NULL",
+        "bio": "TEXT NULL",
+        "is_active": "BOOLEAN DEFAULT true",
+        "created_at": "TIMESTAMPTZ DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "home_location_id"
+          ],
+          "references": "locations",
+          "referenced_columns": [
+            "location_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [
+        [
+          "mealsync_id"
+        ],
+        [
+          "email"
+        ]
+      ],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "roles": {
+      "description": "The four opt-in application roles: VOLUNTEER, DONOR, ORGANIZATION, COMMUNITY_KITCHEN.",
+      "attributes": [
+        "role_id",
+        "role_name",
+        "description"
+      ],
+      "primary key": [
+        "role_id"
+      ],
+      "column_types": {
+        "role_id": "SMALLSERIAL",
+        "role_name": "VARCHAR(32)",
+        "description": "TEXT NULL"
+      },
+      "foreign_keys": [],
+      "unique_constraints": [
+        [
+          "role_name"
+        ]
+      ],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "user_roles": {
+      "description": "Many-to-many mapping that permits a user to activate any combination of roles.",
+      "attributes": [
+        "user_id",
+        "role_id",
+        "assigned_at"
+      ],
+      "primary key": [
+        "user_id",
+        "role_id"
+      ],
+      "column_types": {
+        "user_id": "BIGINT",
+        "role_id": "SMALLINT",
+        "assigned_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "role_id"
+          ],
+          "references": "roles",
+          "referenced_columns": [
+            "role_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "organizations": {
+      "description": "NGOs or organizing bodies that create events and may operate multiple kitchens.",
+      "attributes": [
+        "organization_id",
+        "name",
+        "description",
+        "organization_type",
+        "email",
+        "phone",
+        "website",
+        "location_id",
+        "verification_status",
+        "created_by_user_id",
+        "created_at",
+        "updated_at"
+      ],
+      "primary key": [
+        "organization_id"
+      ],
+      "column_types": {
+        "organization_id": "BIGSERIAL",
+        "name": "VARCHAR(180)",
+        "description": "TEXT NULL",
+        "organization_type": "VARCHAR(40)",
+        "email": "VARCHAR(254) NULL",
+        "phone": "VARCHAR(30) NULL",
+        "website": "TEXT NULL",
+        "location_id": "BIGINT NULL",
+        "verification_status": "VARCHAR(20) DEFAULT 'PENDING'",
+        "created_by_user_id": "BIGINT",
+        "created_at": "TIMESTAMPTZ DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "location_id"
+          ],
+          "references": "locations",
+          "referenced_columns": [
+            "location_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "created_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "verification_status IN ('PENDING','VERIFIED','REJECTED')"
+      ],
+      "phase": "MVP"
+    },
+    "organization_members": {
+      "description": "Maps registered users to organizations with a scoped authorization role.",
+      "attributes": [
+        "organization_id",
+        "user_id",
+        "organization_role",
+        "invited_by_user_id",
+        "joined_at",
+        "is_active"
+      ],
+      "primary key": [
+        "organization_id",
+        "user_id"
+      ],
+      "column_types": {
+        "organization_id": "BIGINT",
+        "user_id": "BIGINT",
+        "organization_role": "VARCHAR(40) DEFAULT 'MEMBER'",
+        "invited_by_user_id": "BIGINT NULL",
+        "joined_at": "TIMESTAMPTZ DEFAULT now()",
+        "is_active": "BOOLEAN DEFAULT true"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "references": "organizations",
+          "referenced_columns": [
+            "organization_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "invited_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "community_kitchens": {
+      "description": "Kitchen is its own entity and may be independent (organization_id NULL) or attached to an organization.",
+      "attributes": [
+        "kitchen_id",
+        "organization_id",
+        "name",
+        "description",
+        "location_id",
+        "contact_phone",
+        "capacity_per_day",
+        "verification_status",
+        "created_by_user_id",
+        "created_at",
+        "updated_at"
+      ],
+      "primary key": [
+        "kitchen_id"
+      ],
+      "column_types": {
+        "kitchen_id": "BIGSERIAL",
+        "organization_id": "BIGINT NULL",
+        "name": "VARCHAR(180)",
+        "description": "TEXT NULL",
+        "location_id": "BIGINT",
+        "contact_phone": "VARCHAR(30) NULL",
+        "capacity_per_day": "INTEGER NULL",
+        "verification_status": "VARCHAR(20) DEFAULT 'PENDING'",
+        "created_by_user_id": "BIGINT",
+        "created_at": "TIMESTAMPTZ DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "references": "organizations",
+          "referenced_columns": [
+            "organization_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "location_id"
+          ],
+          "references": "locations",
+          "referenced_columns": [
+            "location_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "created_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "capacity_per_day IS NULL OR capacity_per_day >= 0",
+        "verification_status IN ('PENDING','VERIFIED','REJECTED')"
+      ],
+      "phase": "MVP"
+    },
+    "kitchen_members": {
+      "description": "Users with explicit membership in a kitchen; role can be manager, coordinator, chef, or staff.",
+      "attributes": [
+        "kitchen_id",
+        "user_id",
+        "membership_role",
+        "added_at",
+        "is_active"
+      ],
+      "primary key": [
+        "kitchen_id",
+        "user_id"
+      ],
+      "column_types": {
+        "kitchen_id": "BIGINT",
+        "user_id": "BIGINT",
+        "membership_role": "VARCHAR(40)",
+        "added_at": "TIMESTAMPTZ DEFAULT now()",
+        "is_active": "BOOLEAN DEFAULT true"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "kitchen_hours": {
+      "description": "Recurring opening/availability windows. Multiple windows on one weekday are allowed.",
+      "attributes": [
+        "hour_id",
+        "kitchen_id",
+        "weekday",
+        "opens_at",
+        "closes_at",
+        "notes"
+      ],
+      "primary key": [
+        "hour_id"
+      ],
+      "column_types": {
+        "hour_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT",
+        "weekday": "SMALLINT",
+        "opens_at": "TIME",
+        "closes_at": "TIME",
+        "notes": "TEXT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [
+        [
+          "kitchen_id",
+          "weekday",
+          "opens_at"
+        ]
+      ],
+      "checks": [
+        "weekday BETWEEN 0 AND 6",
+        "opens_at < closes_at"
+      ],
+      "phase": "MVP"
+    },
+    "skills": {
+      "description": "Controlled vocabulary of volunteer/event skills (cooking, packing, distribution, driving, cleaning, etc.).",
+      "attributes": [
+        "skill_id",
+        "skill_name",
+        "description"
+      ],
+      "primary key": [
+        "skill_id"
+      ],
+      "column_types": {
+        "skill_id": "BIGSERIAL",
+        "skill_name": "VARCHAR(80)",
+        "description": "TEXT NULL"
+      },
+      "foreign_keys": [],
+      "unique_constraints": [
+        [
+          "skill_name"
+        ]
+      ],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "volunteer_profiles": {
+      "description": "Volunteer-specific profile and matching preferences; account identity remains in users.",
+      "attributes": [
+        "user_id",
+        "experience_level",
+        "preferred_travel_distance_km",
+        "emergency_contact_name",
+        "emergency_contact_phone",
+        "profile_visibility"
+      ],
+      "primary key": [
+        "user_id"
+      ],
+      "column_types": {
+        "user_id": "BIGINT",
+        "experience_level": "VARCHAR(30) DEFAULT 'BEGINNER'",
+        "preferred_travel_distance_km": "NUMERIC(6,2) DEFAULT 10",
+        "emergency_contact_name": "VARCHAR(120) NULL",
+        "emergency_contact_phone": "VARCHAR(30) NULL",
+        "profile_visibility": "VARCHAR(20) DEFAULT 'MATCHING_ONLY'"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "preferred_travel_distance_km >= 0",
+        "profile_visibility IN ('PUBLIC','MATCHING_ONLY','PRIVATE')"
+      ],
+      "phase": "MVP"
+    },
+    "volunteer_skills": {
+      "description": "Many-to-many mapping between volunteers and their claimed skills.",
+      "attributes": [
+        "user_id",
+        "skill_id",
+        "proficiency_level",
+        "notes"
+      ],
+      "primary key": [
+        "user_id",
+        "skill_id"
+      ],
+      "column_types": {
+        "user_id": "BIGINT",
+        "skill_id": "BIGINT",
+        "proficiency_level": "VARCHAR(20) DEFAULT 'BASIC'",
+        "notes": "TEXT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "user_id"
+          ],
+          "references": "volunteer_profiles",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "skill_id"
+          ],
+          "references": "skills",
+          "referenced_columns": [
+            "skill_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "volunteer_availability": {
+      "description": "Queryable recurring weekly availability or one-off date-specific availability, optionally tied to a location.",
+      "attributes": [
+        "availability_id",
+        "user_id",
+        "is_recurring",
+        "weekday",
+        "availability_date",
+        "start_time",
+        "end_time",
+        "location_id",
+        "notes"
+      ],
+      "primary key": [
+        "availability_id"
+      ],
+      "column_types": {
+        "availability_id": "BIGSERIAL",
+        "user_id": "BIGINT",
+        "is_recurring": "BOOLEAN DEFAULT true",
+        "weekday": "SMALLINT NULL",
+        "availability_date": "DATE NULL",
+        "start_time": "TIME",
+        "end_time": "TIME",
+        "location_id": "BIGINT NULL",
+        "notes": "TEXT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "user_id"
+          ],
+          "references": "volunteer_profiles",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "location_id"
+          ],
+          "references": "locations",
+          "referenced_columns": [
+            "location_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "weekday IS NULL OR weekday BETWEEN 0 AND 6",
+        "start_time < end_time",
+        "(is_recurring = true AND weekday IS NOT NULL) OR (is_recurring = false AND availability_date IS NOT NULL)"
+      ],
+      "phase": "MVP"
+    },
+    "events": {
+      "description": "Canonical, locally managed volunteer or meal-service events. A kitchen may operate independently of an NGO.",
+      "attributes": [
+        "event_id",
+        "organization_id",
+        "kitchen_id",
+        "created_by_user_id",
+        "title",
+        "description",
+        "event_type",
+        "start_at",
+        "end_at",
+        "location_id",
+        "volunteers_required",
+        "meals_target",
+        "status",
+        "source_kind",
+        "created_at",
+        "updated_at"
+      ],
+      "primary key": [
+        "event_id"
+      ],
+      "column_types": {
+        "event_id": "BIGSERIAL",
+        "organization_id": "BIGINT NULL",
+        "kitchen_id": "BIGINT NULL",
+        "created_by_user_id": "BIGINT",
+        "title": "VARCHAR(180)",
+        "description": "TEXT NULL",
+        "event_type": "VARCHAR(40)",
+        "start_at": "TIMESTAMPTZ",
+        "end_at": "TIMESTAMPTZ",
+        "location_id": "BIGINT NULL",
+        "volunteers_required": "INTEGER DEFAULT 0",
+        "meals_target": "INTEGER NULL",
+        "status": "VARCHAR(20) DEFAULT 'DRAFT'",
+        "source_kind": "VARCHAR(20) DEFAULT 'MANUAL'",
+        "created_at": "TIMESTAMPTZ DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "references": "organizations",
+          "referenced_columns": [
+            "organization_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "created_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "location_id"
+          ],
+          "references": "locations",
+          "referenced_columns": [
+            "location_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "end_at > start_at",
+        "volunteers_required >= 0",
+        "meals_target IS NULL OR meals_target >= 0",
+        "organization_id IS NOT NULL OR kitchen_id IS NOT NULL",
+        "status IN ('DRAFT','PUBLISHED','FULL','COMPLETED','CANCELLED')"
+      ],
+      "phase": "MVP"
+    },
+    "event_required_skills": {
+      "description": "Skills/competency needed for an event; used by the volunteer matching heuristic.",
+      "attributes": [
+        "event_id",
+        "skill_id",
+        "minimum_proficiency",
+        "slots_needed"
+      ],
+      "primary key": [
+        "event_id",
+        "skill_id"
+      ],
+      "column_types": {
+        "event_id": "BIGINT",
+        "skill_id": "BIGINT",
+        "minimum_proficiency": "VARCHAR(20) NULL",
+        "slots_needed": "INTEGER NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "event_id"
+          ],
+          "references": "events",
+          "referenced_columns": [
+            "event_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "skill_id"
+          ],
+          "references": "skills",
+          "referenced_columns": [
+            "skill_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "slots_needed IS NULL OR slots_needed >= 0"
+      ],
+      "phase": "MVP"
+    },
+    "event_volunteers": {
+      "description": "Volunteer applications/registrations for events, including approval and attendance tracking.",
+      "attributes": [
+        "event_id",
+        "volunteer_user_id",
+        "status",
+        "attendance_status",
+        "registered_at",
+        "updated_at",
+        "notes"
+      ],
+      "primary key": [
+        "event_id",
+        "volunteer_user_id"
+      ],
+      "column_types": {
+        "event_id": "BIGINT",
+        "volunteer_user_id": "BIGINT",
+        "status": "VARCHAR(20) DEFAULT 'PENDING'",
+        "attendance_status": "VARCHAR(20) DEFAULT 'UNKNOWN'",
+        "registered_at": "TIMESTAMPTZ DEFAULT now()",
+        "updated_at": "TIMESTAMPTZ DEFAULT now()",
+        "notes": "TEXT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "event_id"
+          ],
+          "references": "events",
+          "referenced_columns": [
+            "event_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "volunteer_user_id"
+          ],
+          "references": "volunteer_profiles",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "status IN ('PENDING','ACCEPTED','REJECTED','CANCELLED','COMPLETED')",
+        "attendance_status IN ('UNKNOWN','PRESENT','ABSENT')"
+      ],
+      "phase": "MVP"
+    },
+    "volunteer_referrals": {
+      "description": "A volunteer can refer another registered user to a specific event using their MealSync identity.",
+      "attributes": [
+        "referral_id",
+        "event_id",
+        "referrer_user_id",
+        "referred_user_id",
+        "status",
+        "message",
+        "created_at"
+      ],
+      "primary key": [
+        "referral_id"
+      ],
+      "column_types": {
+        "referral_id": "BIGSERIAL",
+        "event_id": "BIGINT",
+        "referrer_user_id": "BIGINT",
+        "referred_user_id": "BIGINT",
+        "status": "VARCHAR(20) DEFAULT 'SENT'",
+        "message": "TEXT NULL",
+        "created_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "event_id"
+          ],
+          "references": "events",
+          "referenced_columns": [
+            "event_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "referrer_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "referred_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [
+        [
+          "event_id",
+          "referrer_user_id",
+          "referred_user_id"
+        ]
+      ],
+      "checks": [
+        "referrer_user_id <> referred_user_id"
+      ],
+      "phase": "MVP"
+    },
+    "opportunity_sources": {
+      "description": "Whitelisted/public websites or platforms from which opportunities may be imported; respect robots.txt and site terms.",
+      "attributes": [
+        "source_id",
+        "name",
+        "base_url",
+        "source_type",
+        "terms_url",
+        "is_enabled",
+        "last_checked_at",
+        "created_at"
+      ],
+      "primary key": [
+        "source_id"
+      ],
+      "column_types": {
+        "source_id": "BIGSERIAL",
+        "name": "VARCHAR(140)",
+        "base_url": "TEXT",
+        "source_type": "VARCHAR(30)",
+        "terms_url": "TEXT NULL",
+        "is_enabled": "BOOLEAN DEFAULT false",
+        "last_checked_at": "TIMESTAMPTZ NULL",
+        "created_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [],
+      "unique_constraints": [
+        [
+          "base_url"
+        ]
+      ],
+      "checks": [],
+      "phase": "Phase 2"
+    },
+    "external_opportunities": {
+      "description": "Imported/aggregated listings kept separate from first-party events so duplicate and stale records can be controlled.",
+      "attributes": [
+        "opportunity_id",
+        "source_id",
+        "external_id",
+        "title",
+        "description",
+        "organizer_name",
+        "location_id",
+        "url",
+        "starts_at",
+        "ends_at",
+        "required_skills_text",
+        "opportunity_type",
+        "scraped_at",
+        "expires_at",
+        "linked_event_id",
+        "is_active"
+      ],
+      "primary key": [
+        "opportunity_id"
+      ],
+      "column_types": {
+        "opportunity_id": "BIGSERIAL",
+        "source_id": "BIGINT",
+        "external_id": "VARCHAR(180) NULL",
+        "title": "VARCHAR(220)",
+        "description": "TEXT NULL",
+        "organizer_name": "VARCHAR(180) NULL",
+        "location_id": "BIGINT NULL",
+        "url": "TEXT",
+        "starts_at": "TIMESTAMPTZ NULL",
+        "ends_at": "TIMESTAMPTZ NULL",
+        "required_skills_text": "TEXT NULL",
+        "opportunity_type": "VARCHAR(40) NULL",
+        "scraped_at": "TIMESTAMPTZ DEFAULT now()",
+        "expires_at": "TIMESTAMPTZ NULL",
+        "linked_event_id": "BIGINT NULL",
+        "is_active": "BOOLEAN DEFAULT true"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "source_id"
+          ],
+          "references": "opportunity_sources",
+          "referenced_columns": [
+            "source_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "location_id"
+          ],
+          "references": "locations",
+          "referenced_columns": [
+            "location_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "linked_event_id"
+          ],
+          "references": "events",
+          "referenced_columns": [
+            "event_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [
+        [
+          "source_id",
+          "external_id"
+        ]
+      ],
+      "checks": [],
+      "phase": "Phase 2"
+    },
+    "kitchen_event_requests": {
+      "description": "A kitchen's request to host/support an event; the kitchen can accept or decline a request floated by an organizer.",
+      "attributes": [
+        "request_id",
+        "kitchen_id",
+        "event_id",
+        "requested_by_user_id",
+        "status",
+        "message",
+        "created_at",
+        "reviewed_by_user_id",
+        "reviewed_at"
+      ],
+      "primary key": [
+        "request_id"
+      ],
+      "column_types": {
+        "request_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT",
+        "event_id": "BIGINT",
+        "requested_by_user_id": "BIGINT",
+        "status": "VARCHAR(20) DEFAULT 'PENDING'",
+        "message": "TEXT NULL",
+        "created_at": "TIMESTAMPTZ DEFAULT now()",
+        "reviewed_by_user_id": "BIGINT NULL",
+        "reviewed_at": "TIMESTAMPTZ NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "event_id"
+          ],
+          "references": "events",
+          "referenced_columns": [
+            "event_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "requested_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "reviewed_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [
+        [
+          "kitchen_id",
+          "event_id"
+        ]
+      ],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "donation_requests": {
+      "description": "A public request/campaign for money, ingredients, food, equipment, or other resources.",
+      "attributes": [
+        "request_id",
+        "created_by_user_id",
+        "organization_id",
+        "kitchen_id",
+        "event_id",
+        "title",
+        "description",
+        "donation_type",
+        "target_amount",
+        "target_quantity",
+        "unit",
+        "currency",
+        "deadline",
+        "status",
+        "created_at"
+      ],
+      "primary key": [
+        "request_id"
+      ],
+      "column_types": {
+        "request_id": "BIGSERIAL",
+        "created_by_user_id": "BIGINT",
+        "organization_id": "BIGINT NULL",
+        "kitchen_id": "BIGINT NULL",
+        "event_id": "BIGINT NULL",
+        "title": "VARCHAR(180)",
+        "description": "TEXT NULL",
+        "donation_type": "VARCHAR(25)",
+        "target_amount": "NUMERIC(12,2) NULL",
+        "target_quantity": "NUMERIC(12,3) NULL",
+        "unit": "VARCHAR(30) NULL",
+        "currency": "CHAR(3) DEFAULT 'INR'",
+        "deadline": "TIMESTAMPTZ NULL",
+        "status": "VARCHAR(20) DEFAULT 'OPEN'",
+        "created_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "created_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "organization_id"
+          ],
+          "references": "organizations",
+          "referenced_columns": [
+            "organization_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "event_id"
+          ],
+          "references": "events",
+          "referenced_columns": [
+            "event_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "organization_id IS NOT NULL OR kitchen_id IS NOT NULL OR event_id IS NOT NULL",
+        "donation_type IN ('MONEY','FOOD','INGREDIENT','EQUIPMENT','OTHER')",
+        "target_amount IS NULL OR target_amount >= 0",
+        "target_quantity IS NULL OR target_quantity >= 0"
+      ],
+      "phase": "MVP"
+    },
+    "donations": {
+      "description": "A donor's pledge or contribution against a request; do not store payment-card/bank credentials here.",
+      "attributes": [
+        "donation_id",
+        "request_id",
+        "donor_user_id",
+        "donation_type",
+        "amount",
+        "quantity",
+        "unit",
+        "currency",
+        "payment_status",
+        "fulfillment_status",
+        "payment_reference",
+        "donated_at",
+        "received_by_user_id",
+        "notes"
+      ],
+      "primary key": [
+        "donation_id"
+      ],
+      "column_types": {
+        "donation_id": "BIGSERIAL",
+        "request_id": "BIGINT NULL",
+        "donor_user_id": "BIGINT",
+        "donation_type": "VARCHAR(25)",
+        "amount": "NUMERIC(12,2) NULL",
+        "quantity": "NUMERIC(12,3) NULL",
+        "unit": "VARCHAR(30) NULL",
+        "currency": "CHAR(3) DEFAULT 'INR'",
+        "payment_status": "VARCHAR(20) DEFAULT 'NOT_APPLICABLE'",
+        "fulfillment_status": "VARCHAR(20) DEFAULT 'PLEDGED'",
+        "payment_reference": "VARCHAR(180) NULL",
+        "donated_at": "TIMESTAMPTZ DEFAULT now()",
+        "received_by_user_id": "BIGINT NULL",
+        "notes": "TEXT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "request_id"
+          ],
+          "references": "donation_requests",
+          "referenced_columns": [
+            "request_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "donor_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "received_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "amount IS NULL OR amount >= 0",
+        "quantity IS NULL OR quantity >= 0",
+        "payment_status IN ('NOT_APPLICABLE','PENDING','PAID','FAILED','REFUNDED')",
+        "fulfillment_status IN ('PLEDGED','RECEIVED','DELIVERED','CANCELLED')"
+      ],
+      "phase": "MVP"
+    },
+    "ingredients": {
+      "description": "Normalized catalogue of food ingredients and their base units.",
+      "attributes": [
+        "ingredient_id",
+        "name",
+        "base_unit",
+        "category",
+        "is_perishable",
+        "created_at"
+      ],
+      "primary key": [
+        "ingredient_id"
+      ],
+      "column_types": {
+        "ingredient_id": "BIGSERIAL",
+        "name": "VARCHAR(120)",
+        "base_unit": "VARCHAR(20)",
+        "category": "VARCHAR(50) NULL",
+        "is_perishable": "BOOLEAN DEFAULT false",
+        "created_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [],
+      "unique_constraints": [
+        [
+          "name"
+        ]
+      ],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "kitchen_inventory": {
+      "description": "Current stock level for each ingredient at each kitchen; update it transactionally with inventory_transactions.",
+      "attributes": [
+        "inventory_id",
+        "kitchen_id",
+        "ingredient_id",
+        "quantity",
+        "minimum_threshold",
+        "updated_at",
+        "updated_by_user_id"
+      ],
+      "primary key": [
+        "inventory_id"
+      ],
+      "column_types": {
+        "inventory_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT",
+        "ingredient_id": "BIGINT",
+        "quantity": "NUMERIC(12,3) DEFAULT 0",
+        "minimum_threshold": "NUMERIC(12,3) DEFAULT 0",
+        "updated_at": "TIMESTAMPTZ DEFAULT now()",
+        "updated_by_user_id": "BIGINT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "ingredient_id"
+          ],
+          "references": "ingredients",
+          "referenced_columns": [
+            "ingredient_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "updated_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [
+        [
+          "kitchen_id",
+          "ingredient_id"
+        ]
+      ],
+      "checks": [
+        "quantity >= 0",
+        "minimum_threshold >= 0"
+      ],
+      "phase": "MVP"
+    },
+    "vendors": {
+      "description": "Ingredient/equipment suppliers associated with kitchens' procurement workflows.",
+      "attributes": [
+        "vendor_id",
+        "name",
+        "phone",
+        "email",
+        "location_id",
+        "website",
+        "notes",
+        "is_active"
+      ],
+      "primary key": [
+        "vendor_id"
+      ],
+      "column_types": {
+        "vendor_id": "BIGSERIAL",
+        "name": "VARCHAR(160)",
+        "phone": "VARCHAR(30) NULL",
+        "email": "VARCHAR(254) NULL",
+        "location_id": "BIGINT NULL",
+        "website": "TEXT NULL",
+        "notes": "TEXT NULL",
+        "is_active": "BOOLEAN DEFAULT true"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "location_id"
+          ],
+          "references": "locations",
+          "referenced_columns": [
+            "location_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [],
+      "phase": "Phase 2"
+    },
+    "vendor_ingredients": {
+      "description": "Supplier catalogue/quote for ingredient and unit, including most recently recorded price.",
+      "attributes": [
+        "vendor_id",
+        "ingredient_id",
+        "quoted_unit",
+        "quoted_price",
+        "currency",
+        "minimum_order_quantity",
+        "last_quoted_at"
+      ],
+      "primary key": [
+        "vendor_id",
+        "ingredient_id",
+        "quoted_unit"
+      ],
+      "column_types": {
+        "vendor_id": "BIGINT",
+        "ingredient_id": "BIGINT",
+        "quoted_unit": "VARCHAR(20)",
+        "quoted_price": "NUMERIC(12,2)",
+        "currency": "CHAR(3) DEFAULT 'INR'",
+        "minimum_order_quantity": "NUMERIC(12,3) NULL",
+        "last_quoted_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "vendor_id"
+          ],
+          "references": "vendors",
+          "referenced_columns": [
+            "vendor_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "ingredient_id"
+          ],
+          "references": "ingredients",
+          "referenced_columns": [
+            "ingredient_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "quoted_price >= 0",
+        "minimum_order_quantity IS NULL OR minimum_order_quantity >= 0"
+      ],
+      "phase": "Phase 2"
+    },
+    "purchase_orders": {
+      "description": "Kitchen purchase order header for supplier procurement.",
+      "attributes": [
+        "order_id",
+        "kitchen_id",
+        "vendor_id",
+        "placed_by_user_id",
+        "order_date",
+        "expected_delivery_date",
+        "status",
+        "total_amount",
+        "notes"
+      ],
+      "primary key": [
+        "order_id"
+      ],
+      "column_types": {
+        "order_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT",
+        "vendor_id": "BIGINT",
+        "placed_by_user_id": "BIGINT",
+        "order_date": "DATE DEFAULT CURRENT_DATE",
+        "expected_delivery_date": "DATE NULL",
+        "status": "VARCHAR(20) DEFAULT 'DRAFT'",
+        "total_amount": "NUMERIC(12,2) DEFAULT 0",
+        "notes": "TEXT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "vendor_id"
+          ],
+          "references": "vendors",
+          "referenced_columns": [
+            "vendor_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "placed_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "total_amount >= 0",
+        "expected_delivery_date IS NULL OR expected_delivery_date >= order_date"
+      ],
+      "phase": "Phase 2"
+    },
+    "purchase_order_items": {
+      "description": "Line items of a purchase order; partial receipt is supported.",
+      "attributes": [
+        "order_item_id",
+        "order_id",
+        "ingredient_id",
+        "quantity",
+        "unit",
+        "unit_price",
+        "received_quantity"
+      ],
+      "primary key": [
+        "order_item_id"
+      ],
+      "column_types": {
+        "order_item_id": "BIGSERIAL",
+        "order_id": "BIGINT",
+        "ingredient_id": "BIGINT",
+        "quantity": "NUMERIC(12,3)",
+        "unit": "VARCHAR(20)",
+        "unit_price": "NUMERIC(12,2)",
+        "received_quantity": "NUMERIC(12,3) DEFAULT 0"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "order_id"
+          ],
+          "references": "purchase_orders",
+          "referenced_columns": [
+            "order_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "ingredient_id"
+          ],
+          "references": "ingredients",
+          "referenced_columns": [
+            "ingredient_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "quantity > 0",
+        "unit_price >= 0",
+        "received_quantity >= 0 AND received_quantity <= quantity"
+      ],
+      "phase": "Phase 2"
+    },
+    "inventory_transactions": {
+      "description": "Append-only stock movement ledger. quantity_delta is signed; service code keeps it and kitchen_inventory consistent in one transaction.",
+      "attributes": [
+        "transaction_id",
+        "kitchen_id",
+        "ingredient_id",
+        "recorded_by_user_id",
+        "transaction_type",
+        "quantity_delta",
+        "unit",
+        "donation_id",
+        "order_item_id",
+        "note",
+        "created_at"
+      ],
+      "primary key": [
+        "transaction_id"
+      ],
+      "column_types": {
+        "transaction_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT",
+        "ingredient_id": "BIGINT",
+        "recorded_by_user_id": "BIGINT",
+        "transaction_type": "VARCHAR(20)",
+        "quantity_delta": "NUMERIC(12,3)",
+        "unit": "VARCHAR(20)",
+        "donation_id": "BIGINT NULL",
+        "order_item_id": "BIGINT NULL",
+        "note": "TEXT NULL",
+        "created_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "ingredient_id"
+          ],
+          "references": "ingredients",
+          "referenced_columns": [
+            "ingredient_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "recorded_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "donation_id"
+          ],
+          "references": "donations",
+          "referenced_columns": [
+            "donation_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "order_item_id"
+          ],
+          "references": "purchase_order_items",
+          "referenced_columns": [
+            "order_item_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "quantity_delta <> 0",
+        "transaction_type IN ('DONATION','PURCHASE','USE','WASTE','ADJUSTMENT','TRANSFER_IN','TRANSFER_OUT')"
+      ],
+      "phase": "MVP"
+    },
+    "recipes": {
+      "description": "Recipes, optionally owned by a specific kitchen; NULL kitchen_id means shared/global recipe.",
+      "attributes": [
+        "recipe_id",
+        "kitchen_id",
+        "name",
+        "description",
+        "default_servings",
+        "instructions",
+        "created_by_user_id",
+        "is_active",
+        "created_at"
+      ],
+      "primary key": [
+        "recipe_id"
+      ],
+      "column_types": {
+        "recipe_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT NULL",
+        "name": "VARCHAR(160)",
+        "description": "TEXT NULL",
+        "default_servings": "INTEGER DEFAULT 1",
+        "instructions": "TEXT NULL",
+        "created_by_user_id": "BIGINT",
+        "is_active": "BOOLEAN DEFAULT true",
+        "created_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "created_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "default_servings > 0"
+      ],
+      "phase": "MVP"
+    },
+    "recipe_ingredients": {
+      "description": "Ingredient quantities normalized per serving so planned inventory use can scale with servings.",
+      "attributes": [
+        "recipe_id",
+        "ingredient_id",
+        "quantity_per_serving",
+        "unit",
+        "notes"
+      ],
+      "primary key": [
+        "recipe_id",
+        "ingredient_id"
+      ],
+      "column_types": {
+        "recipe_id": "BIGINT",
+        "ingredient_id": "BIGINT",
+        "quantity_per_serving": "NUMERIC(12,4)",
+        "unit": "VARCHAR(20)",
+        "notes": "TEXT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "recipe_id"
+          ],
+          "references": "recipes",
+          "referenced_columns": [
+            "recipe_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "ingredient_id"
+          ],
+          "references": "ingredients",
+          "referenced_columns": [
+            "ingredient_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "quantity_per_serving > 0"
+      ],
+      "phase": "MVP"
+    },
+    "chefs": {
+      "description": "Kitchen-specific chef profile; a chef may be a registered user or a staff member entered by a kitchen manager.",
+      "attributes": [
+        "chef_id",
+        "kitchen_id",
+        "user_id",
+        "display_name",
+        "specialty",
+        "is_active",
+        "created_at"
+      ],
+      "primary key": [
+        "chef_id"
+      ],
+      "column_types": {
+        "chef_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT",
+        "user_id": "BIGINT NULL",
+        "display_name": "VARCHAR(120)",
+        "specialty": "VARCHAR(120) NULL",
+        "is_active": "BOOLEAN DEFAULT true",
+        "created_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "SET NULL"
+        }
+      ],
+      "unique_constraints": [
+        [
+          "kitchen_id",
+          "user_id"
+        ]
+      ],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "meal_schedules": {
+      "description": "Scheduled recipe preparation at a kitchen with planned/actual serving counts and a lifecycle status.",
+      "attributes": [
+        "schedule_id",
+        "kitchen_id",
+        "recipe_id",
+        "scheduled_date",
+        "start_time",
+        "end_time",
+        "planned_servings",
+        "actual_servings",
+        "status",
+        "created_by_user_id",
+        "notes"
+      ],
+      "primary key": [
+        "schedule_id"
+      ],
+      "column_types": {
+        "schedule_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT",
+        "recipe_id": "BIGINT",
+        "scheduled_date": "DATE",
+        "start_time": "TIME",
+        "end_time": "TIME",
+        "planned_servings": "INTEGER",
+        "actual_servings": "INTEGER NULL",
+        "status": "VARCHAR(20) DEFAULT 'PLANNED'",
+        "created_by_user_id": "BIGINT",
+        "notes": "TEXT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "recipe_id"
+          ],
+          "references": "recipes",
+          "referenced_columns": [
+            "recipe_id"
+          ],
+          "on_delete": "RESTRICT"
+        },
+        {
+          "columns": [
+            "created_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "start_time < end_time",
+        "planned_servings > 0",
+        "actual_servings IS NULL OR actual_servings >= 0",
+        "status IN ('PLANNED','IN_PROGRESS','COMPLETED','CANCELLED')"
+      ],
+      "phase": "MVP"
+    },
+    "meal_schedule_chefs": {
+      "description": "Many-to-many assignment allowing multiple chefs to share a recipe schedule and responsibility.",
+      "attributes": [
+        "schedule_id",
+        "chef_id",
+        "responsibility",
+        "assigned_at"
+      ],
+      "primary key": [
+        "schedule_id",
+        "chef_id"
+      ],
+      "column_types": {
+        "schedule_id": "BIGINT",
+        "chef_id": "BIGINT",
+        "responsibility": "VARCHAR(80) NULL",
+        "assigned_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "schedule_id"
+          ],
+          "references": "meal_schedules",
+          "referenced_columns": [
+            "schedule_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "chef_id"
+          ],
+          "references": "chefs",
+          "referenced_columns": [
+            "chef_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [],
+      "phase": "MVP"
+    },
+    "meal_demand": {
+      "description": "One daily demand record per kitchen; supports estimates now and historical actual counts for later forecasting.",
+      "attributes": [
+        "demand_id",
+        "kitchen_id",
+        "demand_date",
+        "estimated_servings",
+        "actual_servings",
+        "estimation_method",
+        "confidence",
+        "notes",
+        "recorded_by_user_id",
+        "created_at"
+      ],
+      "primary key": [
+        "demand_id"
+      ],
+      "column_types": {
+        "demand_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT",
+        "demand_date": "DATE",
+        "estimated_servings": "INTEGER",
+        "actual_servings": "INTEGER NULL",
+        "estimation_method": "VARCHAR(40) DEFAULT 'MANUAL'",
+        "confidence": "NUMERIC(4,3) NULL",
+        "notes": "TEXT NULL",
+        "recorded_by_user_id": "BIGINT",
+        "created_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "recorded_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_constraints": [
+        [
+          "kitchen_id",
+          "demand_date"
+        ]
+      ],
+      "checks": [
+        "estimated_servings >= 0",
+        "actual_servings IS NULL OR actual_servings >= 0",
+        "confidence IS NULL OR confidence BETWEEN 0 AND 1"
+      ],
+      "phase": "MVP"
+    },
+    "food_surplus": {
+      "description": "Tracks prepared meals remaining after service and what happened to the surplus.",
+      "attributes": [
+        "surplus_id",
+        "kitchen_id",
+        "schedule_id",
+        "recipe_id",
+        "servings_remaining",
+        "action_taken",
+        "distributed_to",
+        "logged_by_user_id",
+        "logged_at",
+        "notes"
+      ],
+      "primary key": [
+        "surplus_id"
+      ],
+      "column_types": {
+        "surplus_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT",
+        "schedule_id": "BIGINT NULL",
+        "recipe_id": "BIGINT NULL",
+        "servings_remaining": "INTEGER",
+        "action_taken": "VARCHAR(40)",
+        "distributed_to": "VARCHAR(180) NULL",
+        "logged_by_user_id": "BIGINT",
+        "logged_at": "TIMESTAMPTZ DEFAULT now()",
+        "notes": "TEXT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "schedule_id"
+          ],
+          "references": "meal_schedules",
+          "referenced_columns": [
+            "schedule_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "recipe_id"
+          ],
+          "references": "recipes",
+          "referenced_columns": [
+            "recipe_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "logged_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "servings_remaining > 0"
+      ],
+      "phase": "MVP"
+    },
+    "food_wastage": {
+      "description": "Logs wasted ingredients or prepared food, including reason and traceable kitchen/user context.",
+      "attributes": [
+        "wastage_id",
+        "kitchen_id",
+        "ingredient_id",
+        "recipe_id",
+        "schedule_id",
+        "quantity",
+        "unit",
+        "reason",
+        "logged_by_user_id",
+        "logged_at",
+        "notes"
+      ],
+      "primary key": [
+        "wastage_id"
+      ],
+      "column_types": {
+        "wastage_id": "BIGSERIAL",
+        "kitchen_id": "BIGINT",
+        "ingredient_id": "BIGINT NULL",
+        "recipe_id": "BIGINT NULL",
+        "schedule_id": "BIGINT NULL",
+        "quantity": "NUMERIC(12,3)",
+        "unit": "VARCHAR(20)",
+        "reason": "VARCHAR(40)",
+        "logged_by_user_id": "BIGINT",
+        "logged_at": "TIMESTAMPTZ DEFAULT now()",
+        "notes": "TEXT NULL"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "kitchen_id"
+          ],
+          "references": "community_kitchens",
+          "referenced_columns": [
+            "kitchen_id"
+          ],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": [
+            "ingredient_id"
+          ],
+          "references": "ingredients",
+          "referenced_columns": [
+            "ingredient_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "recipe_id"
+          ],
+          "references": "recipes",
+          "referenced_columns": [
+            "recipe_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "schedule_id"
+          ],
+          "references": "meal_schedules",
+          "referenced_columns": [
+            "schedule_id"
+          ],
+          "on_delete": "SET NULL"
+        },
+        {
+          "columns": [
+            "logged_by_user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "RESTRICT"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [
+        "quantity > 0",
+        "ingredient_id IS NOT NULL OR recipe_id IS NOT NULL",
+        "reason IN ('SPOILAGE','OVERPRODUCTION','DAMAGED','PREPARATION_WASTE','OTHER')"
+      ],
+      "phase": "MVP"
+    },
+    "notifications": {
+      "description": "In-app notifications for referrals, event approvals, donations, and kitchen requests.",
+      "attributes": [
+        "notification_id",
+        "user_id",
+        "notification_type",
+        "title",
+        "body",
+        "link_path",
+        "is_read",
+        "created_at"
+      ],
+      "primary key": [
+        "notification_id"
+      ],
+      "column_types": {
+        "notification_id": "BIGSERIAL",
+        "user_id": "BIGINT",
+        "notification_type": "VARCHAR(40)",
+        "title": "VARCHAR(180)",
+        "body": "TEXT",
+        "link_path": "TEXT NULL",
+        "is_read": "BOOLEAN DEFAULT false",
+        "created_at": "TIMESTAMPTZ DEFAULT now()"
+      },
+      "foreign_keys": [
+        {
+          "columns": [
+            "user_id"
+          ],
+          "references": "users",
+          "referenced_columns": [
+            "user_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "unique_constraints": [],
+      "checks": [],
+      "phase": "Phase 2"
+    }
+  }
+}
