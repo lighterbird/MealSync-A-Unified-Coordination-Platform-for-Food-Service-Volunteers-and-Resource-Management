@@ -1,0 +1,16 @@
+# Node / frontend
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Editors / operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
