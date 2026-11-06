@@ -23,3 +23,22 @@ class CommunityKitchen(db.Model):
             "kitchen_admin_mealsync_id": self.kitchen_admin_mealsync_id,
             "average_feeding_capacity": self.average_feeding_capacity
         }
+
+class KitchenMembership(db.Model):
+    __tablename__ = "kitchen_memberships"
+
+    kitchen_id = db.Column(db.Integer, db.ForeignKey("community_kitchens.kitchen_id"), primary_key=True)
+    mealsync_id = db.Column(db.String(50), db.ForeignKey("user.mealsync_id"), primary_key=True)
+    membership_role = db.Column(db.String(40), nullable=False)
+    status = db.Column(db.String(20), default="active")
+    joining_date = db.Column(db.DateTime, server_default=db.func.now())
+
+    def to_dict(self):
+        return {
+            "kitchen_id": self.kitchen_id,
+            "mealsync_id": self.mealsync_id,
+            "membership_role": self.membership_role,
+            "status": self.status,
+            "joining_date": self.joining_date.isoformat() if self.joining_date else None
+        }
+
