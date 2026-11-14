@@ -1,0 +1,108 @@
+/* Reset default margins and set font */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4; /* Light gray background */
+  color: #333; /* Dark text color */
+}
+
+/* The main layout container uses flexbox */
+.app-container {
+  display: flex;
+  height: 100vh; /* Full viewport height */
+}
+
+/* Sidebar styles */
+.sidebar {
+  width: 200px; /* Fixed width */
+  background-color: #2e7d32; /* Dark green background */
+  padding: 20px; /* Inner spacing */
+  color: white; /* White text */
+  display: flex;
+  flex-direction: column; /* Stack items vertically */
+}
+
+/* Sidebar title */
+.sidebar-title {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+/* Sidebar navigation links */
+.sidebar-nav a {
+  color: white; /* White text */
+  text-decoration: none; /* Remove underline */
+  padding: 8px 0; /* Vertical spacing */
+  display: block; /* Make each link take full width */
+  font-size: 16px;
+}
+
+/* Sidebar link hover effect */
+.sidebar-nav a:hover {
+  text-decoration: underline; /* Underline on hover */
+}
+
+/* Main content area */
+.main-content {
+  flex: 1; /* Take up remaining space */
+  padding: 20px; /* Inner spacing */
+  overflow-y: auto; /* Scroll if content is too long */
+}
+
+/* Page container inside main content */
+.page {
+  background: white; /* White card background */
+  padding: 20px;
+  border-radius: 4px; /* Slightly rounded corners */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Simple shadow */
+}
+
+/* Sections within a page */
+.section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #ddd; /* Separator line */
+}
+
+/* Basic button styles */
+.button {
+  background-color: #2e7d32; /* Green background */
+  color: white; /* White text */
+  border: none; /* No border */
+  padding: 8px 16px; /* Padding */
+  cursor: pointer; /* Pointer cursor on hover */
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+/* Button hover effect */
+.button:hover {
+  background-color: #1b5e20; /* Darker green */
+}
+
+/* Input field styles */
+input {
+  padding: 6px;
+  margin-left: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Error message styles */
+.error {
+  color: red;
+  font-weight: bold;
+}
+
+/* Unordered list for kitchens */
+.kitchen-list {
+  list-style-type: none; /* Remove bullet points */
+  padding: 0;
+}
+
+/* Each kitchen list item */
+.kitchen-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee; /* Light separator */
+}

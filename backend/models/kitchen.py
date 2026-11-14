@@ -9,7 +9,7 @@ class CommunityKitchen(db.Model):
     locality = db.Column(db.String(150), nullable=False)
     city = db.Column(db.String(100), nullable=False)
     state = db.Column(db.String(100), nullable=False)
-    kitchen_admin_mealsync_id = db.Column(db.String(50), db.ForeignKey("user.mealsync_id"), nullable=False)
+    kitchen_admin_mealsync_id = db.Column(db.String(50), db.ForeignKey("users.mealsync_id"), nullable=False)
     average_feeding_capacity = db.Column(db.Integer, default=0)
 
     admin = db.relationship("User", foreign_keys=[kitchen_admin_mealsync_id])
@@ -28,7 +28,7 @@ class KitchenMembership(db.Model):
     __tablename__ = "kitchen_memberships"
 
     kitchen_id = db.Column(db.Integer, db.ForeignKey("community_kitchens.kitchen_id"), primary_key=True)
-    mealsync_id = db.Column(db.String(50), db.ForeignKey("user.mealsync_id"), primary_key=True)
+    mealsync_id = db.Column(db.String(50), db.ForeignKey("users.mealsync_id"), primary_key=True)
     membership_role = db.Column(db.String(40), nullable=False)
     status = db.Column(db.String(20), default="active")
     joining_date = db.Column(db.DateTime, server_default=db.func.now())
