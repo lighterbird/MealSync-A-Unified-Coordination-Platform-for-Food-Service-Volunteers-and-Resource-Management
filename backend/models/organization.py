@@ -1,25 +1,17 @@
 from db import db
 
+class CommunityKitchen(db.Model):
+    __tablename__ = "community_kitchens"
 
-class Organization(db.Model):
-    __tablename__ = "organizations"
-
-    organization_id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    kitchen_id = db.Column(db.String(50), primary_key=True)
+    admin_mealsync_id = db.Column(db.String(50), db.ForeignKey("users.mealsync_id"), nullable=False)
     name = db.Column(db.String(160), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    organization_type = db.Column(db.String(50), nullable=True)
-    address = db.Column(db.Text, nullable=True)
-    latitude = db.Column(db.Numeric(9, 6), nullable=True)
-    longitude = db.Column(db.Numeric(9, 6), nullable=True)
-    phone = db.Column(db.String(30), nullable=True)
-    email = db.Column(db.String(255), nullable=True)
-    website = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(
-        db.DateTime, nullable=False, server_default=db.func.current_timestamp()
-    )
+    city = db.Column(db.String(100), nullable=False)
+    state = db.Column(db.String(100), nullable=False)
 
-    members = db.relationship(
-        "OrganizationMember",
-        back_populates="organization",
-        cascade="all, delete-orphan",
-    )
+    # Relationships
+    admin = db.relationship("User", back_populates="kitchens")
+    events = db.relationship("Event", back_populates="kitchen")
+    inventory = db.relationship("Inventory", back_populates="kitchen", cascade="all, delete-orphan")
+    recipes = db.relationship("Recipe", back_populates="kitchen", cascade="all, delete-orphan")
