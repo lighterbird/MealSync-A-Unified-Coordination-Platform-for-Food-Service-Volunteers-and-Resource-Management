@@ -1,87 +1,34 @@
 from db import db
 
-
 class Event(db.Model):
     __tablename__ = "events"
 
-    event_id = db.Column(
-        db.BigInteger,
-        primary_key=True,
-        autoincrement=True
-    )
+    event_id = db.Column(db.String(50), primary_key=True)
+    org_id = db.Column(db.String(50), db.ForeignKey("organizations.org_id"), nullable=False)
+    kitchen_id = db.Column(db.String(50), db.ForeignKey("community_kitchens.kitchen_id"), nullable=True)
+    city = db.Column(db.String(100), nullable=False)
+    state = db.Column(db.String(100), nullable=False)
+    event_date = db.Column(db.Date, nullable=False)
+    expected_people = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(20), default="proposed")
 
-    created_by_user_id = db.Column(
-        db.BigInteger,
-        db.ForeignKey("users.user_id"),
-        nullable=False
-    )
-
-    organization_id = db.Column(
-        db.BigInteger,
-        db.ForeignKey("organizations.organization_id"),
-        nullable=False
-    )
-
-    title = db.Column(db.String(180), nullable=False)
-    description = db.Column(db.Text)
-    event_type = db.Column(db.String(50))
-
-    start_datetime = db.Column(db.DateTime, nullable=False)
-    end_datetime = db.Column(db.DateTime, nullable=False)
-
-    location = db.Column(db.String(255))
-    latitude = db.Column(db.Numeric(9, 6))
-    longitude = db.Column(db.Numeric(9, 6))
-
-    volunteers_required = db.Column(db.Integer)
-    status = db.Column(db.String(20))
-
-    created_at = db.Column(
-        db.DateTime,
-        server_default=db.func.current_timestamp()
-    )
+    # Relationships
+    organization = db.relationship("Organization", back_populates="events")
+    kitchen = db.relationship("CommunityKitchen", back_populates="events")
+    kitchen_requests = db.relationship("KitchenRequest", back_populates="event", cascade="all, delete-orphan")
+    volunteer_registrations = db.relationship("VolunteerRegistration", back_populates="event", cascade="all, delete-orphan")
 
 
-class EventVolunteer(db.Model):
-    __tablename__ = "event_volunteers"
+class VolunteerRegistration(db.Model):
+    __tablename__ = "volunteer_registrations"
 
-    event_id = db.Column(
-        db.BigInteger,
-        db.ForeignKey("events.event_id"),
-        primary_key=True
-    )
+    registration_id = db.Column(db.String(50), primary_key=True)
+    event_id = db.Column(db.String(50), db.ForeignKey("events.event_id"), nullable=False)
+    volunteer_mealsync_id = db.Column(db.String(50), db.ForeignKey("users.mealsync_id"), nullable=False)
+    status = db.Column(db.String(20), default="requested")
+    referred_by_mealsync_id = db.Column(db.String(50), db.ForeignKey("users.mealsync_id"), nullable=True)
 
-    volunteer_id = db.Column(
-        db.BigInteger,
-        db.ForeignKey("users.user_id"),
-        primary_key=True
-    )
-
-    status = db.Column(db.String(20))
-
-    registered_at = db.Column(
-        db.DateTime,
-        server_default=db.func.current_timestamp()
-    )
-
-    updated_at = db.Column(
-        db.DateTime,
-        server_default=db.func.current_timestamp(),
-        onupdate=db.func.current_timestamp()
-    )
-
-
-class EventRequiredSkill(db.Model):
-    __tablename__ = "event_required_skills"
-
-    event_id = db.Column(
-        db.BigInteger,
-        db.ForeignKey("events.event_id"),
-        primary_key=True
-    )
-
-    skill_id = db.Column(
-        db.BigInteger,
-        db.ForeignKey("skills.skill_id"),
-        primary_key=True
-    )
+    # Relationships
+    event = db.relationship("Event", back_populates="volunteer_registrations")
+    volunteer = db.relationship("User", foreign_keys=[volunteer_mealsync_id])
+    referrer = db.relationship("User", foreign_keys=[referred_by_mealsync_id])
