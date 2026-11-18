@@ -1,8 +1,5 @@
 from db import db
 
-
-
-
 class VolunteerProfile(db.Model):
     __tablename__ = "volunteer_profiles"
 
