@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from db import db
-from models import Event, KitchenRequest, VolunteerRegistration, User
+from models import Donation, Event, KitchenRequest, VolunteerRegistration, User
 
 event_bp = Blueprint("event", __name__, url_prefix="/api/events")
 
@@ -12,9 +12,21 @@ def generate_event_id():
     return f"E{last_num + 1:05d}"
 
 
+def get_event_donation_totals(org_id):
+    rows = (
+        db.session.query(Donation.event_id, db.func.sum(Donation.amount))
+        .join(Event, Event.event_id == Donation.event_id)
+        .filter(Event.org_id == org_id)
+        .group_by(Donation.event_id)
+        .all()
+    )
+    return {event_id: total for event_id, total in rows}
+
+
 @event_bp.route("/<org_id>", methods=["GET"])
 def get_org_events(org_id):
     events = Event.query.filter_by(org_id=org_id).all()
+    donation_totals = get_event_donation_totals(org_id)
     return jsonify([{
         "event_id": e.event_id,
         "city": e.city,
@@ -22,7 +34,8 @@ def get_org_events(org_id):
         "event_date": e.event_date.isoformat(),
         "expected_people": e.expected_people,
         "status": e.status,
-        "kitchen_name": e.kitchen.name if e.kitchen else None
+        "kitchen_name": e.kitchen.name if e.kitchen else None,
+        "total_donations": format(donation_totals.get(e.event_id, 0), ".2f"),
     } for e in events])
 
 @event_bp.route("", methods=["POST"])
