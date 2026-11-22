@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from flask_cors import CORS
 
 from db import db
+from routes.auth_routes import auth_bp 
 
 load_dotenv()
 
@@ -17,6 +18,9 @@ def create_app():
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
     db.init_app(app)
+
+    # Register Blueprints
+    app.register_blueprint(auth_bp)
 
     return app
 
