@@ -47,7 +47,7 @@ export default function App() {
             <Route path="/dashboard" element={user ? <DashboardPage user={user} /> : <Navigate to="/signin" />} />
             <Route path="/volunteer" element={user ? <VolunteerPage /> : <Navigate to="/signin" />} />
             <Route path="/organization" element={user ? <OrganizationPage user={user} /> : <Navigate to="/signin" />} />
-            <Route path="/kitchen" element={user ? <CommunityKitchenPage /> : <Navigate to="/signin" />} />
+            <Route path="/kitchen" element={user ? <CommunityKitchenPage user={user} /> : <Navigate to="/signin" />} />
             <Route path="/donor" element={user ? <DonorPage /> : <Navigate to="/signin" />} />
             <Route path="/profile" element={user ? <ProfilePage user={user} /> : <Navigate to="/signin" />} />
           </Routes>

@@ -11,12 +11,6 @@ def generate_event_id():
     last_num = int(last_event.event_id[1:])
     return f"E{last_num + 1:05d}"
 
-def generate_request_id():
-    last_req = KitchenRequest.query.order_by(KitchenRequest.request_id.desc()).first()
-    if not last_req:
-        return "R00001"
-    last_num = int(last_req.request_id[1:])
-    return f"R{last_num + 1:05d}"
 
 @event_bp.route("/<org_id>", methods=["GET"])
 def get_org_events(org_id):
