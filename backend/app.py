@@ -8,6 +8,7 @@ from routes.auth_routes import auth_bp
 from routes.organization_routes import org_bp
 from routes.event_routes import event_bp     
 from routes.kitchen_routes import kitchen_bp 
+from routes.volunteer_routes import volunteer_bp
 
 load_dotenv()
 
@@ -26,6 +27,7 @@ def create_app():
     app.register_blueprint(org_bp)  
     app.register_blueprint(event_bp)
     app.register_blueprint(kitchen_bp)
+    app.register_blueprint(volunteer_bp)
 
     return app
 

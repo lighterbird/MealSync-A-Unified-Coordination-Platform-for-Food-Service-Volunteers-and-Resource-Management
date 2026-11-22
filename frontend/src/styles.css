@@ -181,3 +181,17 @@ body {
 .status-badge.registered { background: #a5d6a7; color: #1b5e20; }
 .status-badge.rejected { background: #ef9a9a; color: #b71c1c; }
 .status-badge.past { background: #eeeeee; color: #555; }
+
+.stack-form textarea {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.stack-form select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
