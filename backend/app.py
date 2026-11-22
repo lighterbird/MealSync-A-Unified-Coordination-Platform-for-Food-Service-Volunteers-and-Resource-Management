@@ -5,12 +5,16 @@ from flask_cors import CORS
 
 from db import db
 from routes.auth_routes import auth_bp 
+from routes.organization_routes import org_bp
+from routes.event_routes import event_bp     
+from routes.kitchen_routes import kitchen_bp 
+from routes.volunteer_routes import volunteer_bp
+from routes.donation_routes import donation_bp
 
 load_dotenv()
 
 def create_app():
     app = Flask(__name__)
-    
     CORS(app)
 
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
@@ -21,6 +25,11 @@ def create_app():
 
     # Register Blueprints
     app.register_blueprint(auth_bp)
+    app.register_blueprint(org_bp)  
+    app.register_blueprint(event_bp)
+    app.register_blueprint(kitchen_bp)
+    app.register_blueprint(volunteer_bp)
+    app.register_blueprint(donation_bp)
 
     return app
 
