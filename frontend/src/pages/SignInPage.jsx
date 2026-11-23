@@ -33,11 +33,13 @@ export default function SignInPage({ onLogin }) {
         <h2>Welcome Back</h2>
         {error && <p className="error">{error}</p>}
         <form onSubmit={handleSubmit}>
-          <label>Email</label>
-          <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+          <label className="form-field">Email
+            <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+          </label>
           
-          <label>Password</label>
-          <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+          <label className="form-field">Password
+            <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+          </label>
           
           <button type="submit" className="button primary">Sign In</button>
         </form>

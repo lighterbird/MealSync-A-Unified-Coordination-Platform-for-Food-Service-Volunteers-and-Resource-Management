@@ -90,24 +90,29 @@ function ProfileTab({ userId, onBack }) {
       {message && <p style={{ color: 'green' }}>{message}</p>}
       {error && <p className="error" role="alert">{error}</p>}
       <form onSubmit={handleSubmit} className="stack-form">
-        <label>Description</label>
-        <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows="3" />
+        <label className="form-field">Description
+          <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows="3" />
+        </label>
         <IndiaLocationFields state={form.state} city={form.city}
           onChange={location => setForm(current => ({ ...current, ...location }))} />
-        <label htmlFor="volunteer-flexibility">Flexibility</label>
-        <select id="volunteer-flexibility" value={form.flexibility}
-          onChange={e => setForm({...form, flexibility: Number(e.target.value)})}>
-          <option value={1}>Same city only</option>
-          <option value={2}>Same state only</option>
-        </select>
+        <label className="form-field">Flexibility
+          <select value={form.flexibility} onChange={e => setForm({...form, flexibility: Number(e.target.value)})}>
+            <option value={1}>Same city only</option>
+            <option value={2}>Same state only</option>
+          </select>
+        </label>
         {legacyAvailability && <p>Previously saved availability: {legacyAvailability}</p>}
-        <label htmlFor="availability-start">Availability Start Date</label>
-        <input id="availability-start" type="date" value={startDate} max={endDate || undefined}
-          required={Boolean(endDate)} onChange={e => { setStartDate(e.target.value); setAvailabilityEdited(true); }} />
-        <label htmlFor="availability-end">Availability End Date</label>
-        <input id="availability-end" type="date" value={endDate} min={startDate || undefined}
-          required={Boolean(startDate)} onChange={e => { setEndDate(e.target.value); setAvailabilityEdited(true); }} />
-        <button type="submit" className="button primary">Save Profile</button>
+        <div className="form-fields">
+          <label className="form-field">Availability start date
+            <input type="date" value={startDate} max={endDate || undefined}
+              required={Boolean(endDate)} onChange={e => { setStartDate(e.target.value); setAvailabilityEdited(true); }} />
+          </label>
+          <label className="form-field">Availability end date
+            <input type="date" value={endDate} min={startDate || undefined}
+              required={Boolean(startDate)} onChange={e => { setEndDate(e.target.value); setAvailabilityEdited(true); }} />
+          </label>
+        </div>
+        <div className="form-actions"><button type="submit" className="button primary">Save Profile</button></div>
       </form>
     </div>
   );
@@ -142,9 +147,13 @@ function AllEvents({ userId, onBack }) {
     <div className="page">
       <button onClick={onBack} className="button secondary">&larr; Back</button>
       <h2>All Floated Events</h2>
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <input placeholder="Search by org, city, state..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, padding: '8px' }} />
-        <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ padding: '8px' }} />
+      <div className="form-fields event-filters">
+        <label className="form-field">Search
+          <input className="event-search" placeholder="Organization, city, or state" value={search} onChange={e => setSearch(e.target.value)} />
+        </label>
+        <label className="form-field">Event date
+          <input className="event-search" type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} />
+        </label>
       </div>
       {filtered.length === 0 ? <p>No events found.</p> : filtered.map(e => (
         <div key={e.event_id} className="card">
@@ -243,14 +252,16 @@ function RegisteredEvents({ userId, onBack }) {
           {e.tags.includes('registered') && (
             <div style={{ marginTop: '10px' }}>
               {referTarget === e.registration_id ? (
-                <form onSubmit={event => handleRefer(event, e.event_id)}>
+                <form className="stack-form inline-form" onSubmit={event => handleRefer(event, e.event_id)}>
                   {referError && <p className="error" role="alert">{referError}</p>}
-                  <input aria-label="Friend's MealSync ID" placeholder="Friend's MealSync ID" value={friendId}
-                    onChange={ev => setFriendId(ev.target.value)} required disabled={sendingReferral}
-                    style={{ padding: '6px', marginRight: '10px' }} />
-                  <button type="submit" disabled={sendingReferral} className="button primary">Send Referral</button>
-                  <button type="button" disabled={sendingReferral} onClick={() => setReferTarget(null)}
-                    className="button secondary" style={{ marginLeft: '5px' }}>Cancel</button>
+                  <label className="form-field">Friend’s MealSync ID
+                    <input value={friendId} onChange={ev => setFriendId(ev.target.value)} required disabled={sendingReferral} />
+                  </label>
+                  <div className="form-actions">
+                    <button type="submit" disabled={sendingReferral} className="button primary">Send Referral</button>
+                    <button type="button" disabled={sendingReferral} onClick={() => setReferTarget(null)}
+                      className="button secondary">Cancel</button>
+                  </div>
                 </form>
               ) : (
                 <button disabled={sendingReferral} onClick={() => {

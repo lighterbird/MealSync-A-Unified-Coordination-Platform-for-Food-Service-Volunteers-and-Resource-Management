@@ -47,14 +47,17 @@ const [formData, setFormData] = useState({ name: '', email: '', password: '' });
         <h2>Create an Account</h2>
         {error && <p className="error">{error}</p>}
         <form onSubmit={handleSubmit}>
-            <label>Name</label>
-            <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+            <label className="form-field">Name
+              <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+            </label>
             
-            <label>Email</label>
-            <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+            <label className="form-field">Email
+              <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+            </label>
             
-            <label>Password</label>
-            <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+            <label className="form-field">Password
+              <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+            </label>
             
             <button type="submit" className="button primary">Sign Up</button>
         </form>

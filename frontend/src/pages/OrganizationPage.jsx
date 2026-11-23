@@ -79,11 +79,13 @@ function OrgCard({ org, onSelect, onRefresh }) {
 
   if (isEditing) {
     return (
-      <div className="card">
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Name" />
-        <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" />
-        <button onClick={handleUpdate} className="button primary">Save</button>
-        <button onClick={() => setIsEditing(false)} className="button secondary">Cancel</button>
+      <div className="card stack-form">
+        <label className="form-field">Organization name<input value={name} onChange={e => setName(e.target.value)} /></label>
+        <label className="form-field">Description<input value={desc} onChange={e => setDesc(e.target.value)} /></label>
+        <div className="form-actions">
+          <button onClick={handleUpdate} className="button primary">Save</button>
+          <button onClick={() => setIsEditing(false)} className="button secondary">Cancel</button>
+        </div>
       </div>
     );
   }
@@ -118,11 +120,13 @@ function NewOrgCard({ userId, onCreated }) {
 
   if (isCreating) {
     return (
-      <div className="card">
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Org Name" />
-        <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" />
-        <button onClick={handleCreate} className="button primary">Create</button>
-        <button onClick={() => setIsCreating(false)} className="button secondary">Cancel</button>
+      <div className="card stack-form">
+        <label className="form-field">Organization name<input value={name} onChange={e => setName(e.target.value)} /></label>
+        <label className="form-field">Description<input value={desc} onChange={e => setDesc(e.target.value)} /></label>
+        <div className="form-actions">
+          <button onClick={handleCreate} className="button primary">Create</button>
+          <button onClick={() => setIsCreating(false)} className="button secondary">Cancel</button>
+        </div>
       </div>
     );
   }
@@ -184,7 +188,7 @@ function InsideOrg({ org, onBack }) {
       <div className="event-list">
         {events.length === 0 ? <p>No events yet.</p> : events.map(ev => (
           <div key={ev.event_id} className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div className="card-heading">
               <h3>{ev.city}, {ev.state} | {ev.event_date}</h3>
               <span className={`status-badge ${ev.status}`}>{ev.status.toUpperCase()}</span>
             </div>
@@ -238,17 +242,21 @@ function CreateEventForm({ orgId, onBack, onCreated }) {
       <form onSubmit={handleSubmit} className="stack-form">
         <IndiaLocationFields state={form.state} city={form.city} required
           onChange={location => setForm(current => ({ ...current, ...location }))} />
-        <label htmlFor="kitchen-flexibility">Kitchen matching preference</label>
-        <select id="kitchen-flexibility" value={form.kitchen_flexibility}
-          onChange={e => setForm({ ...form, kitchen_flexibility: Number(e.target.value) })}>
-          <option value={1}>Same city only</option>
-          <option value={2}>Same state only</option>
-        </select>
-        <label>Date</label>
-        <input type="date" required value={form.event_date} onChange={e => setForm({...form, event_date: e.target.value})} />
-        <label>Expected People</label>
-        <input type="number" required min="1" value={form.expected_people} onChange={e => setForm({...form, expected_people: e.target.value})} />
-        <button type="submit" className="button primary">Create Proposed Event</button>
+        <label className="form-field">Kitchen matching preference
+          <select value={form.kitchen_flexibility} onChange={e => setForm({ ...form, kitchen_flexibility: Number(e.target.value) })}>
+            <option value={1}>Same city only</option>
+            <option value={2}>Same state only</option>
+          </select>
+        </label>
+        <div className="form-fields">
+          <label className="form-field">Date
+            <input type="date" required value={form.event_date} onChange={e => setForm({...form, event_date: e.target.value})} />
+          </label>
+          <label className="form-field">Expected people
+            <input type="number" required min="1" value={form.expected_people} onChange={e => setForm({...form, expected_people: e.target.value})} />
+          </label>
+        </div>
+        <div className="form-actions"><button type="submit" className="button primary">Create Proposed Event</button></div>
       </form>
     </div>
   );

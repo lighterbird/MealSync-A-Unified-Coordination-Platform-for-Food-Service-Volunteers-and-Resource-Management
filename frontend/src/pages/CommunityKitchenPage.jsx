@@ -69,11 +69,13 @@ function KitchenCard({ kitchen, onSelect, onRefresh }) {
   if (isEditing) {
     return (
       <form className="card stack-form" onSubmit={handleUpdate}>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Name" />
-        <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" />
+        <label className="form-field">Kitchen name<input value={name} onChange={e => setName(e.target.value)} /></label>
+        <label className="form-field">Description<input value={desc} onChange={e => setDesc(e.target.value)} /></label>
         <IndiaLocationFields {...location} onChange={setLocation} required />
-        <button type="submit" className="button primary">Save</button>
-        <button type="button" onClick={() => setIsEditing(false)} className="button secondary">Cancel</button>
+        <div className="form-actions">
+          <button type="submit" className="button primary">Save</button>
+          <button type="button" onClick={() => setIsEditing(false)} className="button secondary">Cancel</button>
+        </div>
       </form>
     );
   }
@@ -112,11 +114,13 @@ function NewKitchenCard({ userId, onCreated }) {
   if (isCreating) {
     return (
       <form className="card stack-form" onSubmit={handleCreate}>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Kitchen Name" />
-        <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" />
+        <label className="form-field">Kitchen name<input value={name} onChange={e => setName(e.target.value)} /></label>
+        <label className="form-field">Description<input value={desc} onChange={e => setDesc(e.target.value)} /></label>
         <IndiaLocationFields {...location} onChange={setLocation} required />
-        <button type="submit" className="button primary">Create</button>
-        <button type="button" onClick={() => setIsCreating(false)} className="button secondary">Cancel</button>
+        <div className="form-actions">
+          <button type="submit" className="button primary">Create</button>
+          <button type="button" onClick={() => setIsCreating(false)} className="button secondary">Cancel</button>
+        </div>
       </form>
     );
   }
@@ -224,8 +228,8 @@ function KitchenEvents({ kitchenId, matchedOnly, onBack }) {
       <button onClick={onBack} className="button secondary">&larr; Back</button>
       <h2>{matchedOnly ? 'Events for You' : 'All Proposed Events'}</h2>
       {error && <p className="error" role="alert">{error}</p>}
-      {!matchedOnly && <input placeholder="Search by org, city, state..." value={search}
-        onChange={e => setSearch(e.target.value)} style={{ marginBottom: '20px', padding: '8px', width: '100%' }} />}
+      {!matchedOnly && <input className="event-search" placeholder="Search by org, city, state..." value={search}
+        onChange={e => setSearch(e.target.value)} />}
       {!error && filtered.length === 0 && <p>{matchedOnly ? 'No matching events.' : 'No events found.'}</p>}
       {filtered.map(e => (
         <div key={e.event_id} className="card">
@@ -330,12 +334,22 @@ function InventoryTab({ kitchen, onBack }) {
       <button onClick={onBack} className="button secondary">&larr; Back</button>
       <h2>Inventory</h2>
       {saveError && <p className="error" role="alert">{saveError}</p>}
-      <form onSubmit={handleSubmit} className="stack-form" style={{ marginBottom: '20px' }}>
-        <input required placeholder="Item name" value={form.item_name} onChange={e => setForm({...form, item_name: e.target.value})} />
-        <input required type="number" step="0.01" placeholder="Quantity" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} />
-        <input required placeholder="Unit" value={form.unit} onChange={e => setForm({...form, unit: e.target.value})} />
-        <button type="submit" className="button primary">{editingId ? 'Update' : 'Add Item'}</button>
-        {editingId && <button type="button" className="button secondary" onClick={() => { setEditingId(null); setForm({ item_name: '', quantity: '', unit: 'units' }); }}>Cancel</button>}
+      <form onSubmit={handleSubmit} className="stack-form">
+        <div className="form-fields">
+          <label className="form-field">Item name
+            <input required value={form.item_name} onChange={e => setForm({...form, item_name: e.target.value})} />
+          </label>
+          <label className="form-field">Quantity
+            <input required type="number" step="0.01" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} />
+          </label>
+          <label className="form-field">Unit
+            <input required value={form.unit} onChange={e => setForm({...form, unit: e.target.value})} />
+          </label>
+        </div>
+        <div className="form-actions">
+          <button type="submit" className="button primary">{editingId ? 'Update' : 'Add Item'}</button>
+          {editingId && <button type="button" className="button secondary" onClick={() => { setEditingId(null); setForm({ item_name: '', quantity: '', unit: 'units' }); }}>Cancel</button>}
+        </div>
       </form>
       {items.map(i => (
         <div key={i.item_id} className="card">
@@ -406,20 +420,26 @@ function RecipesTab({ kitchen, onBack }) {
       <button onClick={onBack} className="button secondary">&larr; Back</button>
       <h2>Recipes</h2>
       {saveError && <p className="error" role="alert">{saveError}</p>}
-      <form onSubmit={handleSubmit} className="stack-form" style={{ marginBottom: '20px' }}>
-        <input required placeholder="Recipe name" value={name} onChange={e => setName(e.target.value)} />
+      <form onSubmit={handleSubmit} className="stack-form">
+        <label className="form-field">Recipe name<input required value={name} onChange={e => setName(e.target.value)} /></label>
         {ingredients.map((ing, idx) => (
-          <div key={idx} style={{ display: 'flex', gap: '5px' }}>
-            <select value={ing.item_id} onChange={e => updateIng(idx, 'item_id', e.target.value)} required>
-              <option value="">Select item</option>
-              {inventory.map(i => <option key={i.item_id} value={i.item_id}>{i.item_name}</option>)}
-            </select>
-            <input type="number" step="0.01" placeholder="Qty per serving" value={ing.quantity_per_serving} onChange={e => updateIng(idx, 'quantity_per_serving', e.target.value)} required />
-            <button type="button" onClick={() => removeIngRow(idx)} className="button danger">X</button>
+          <div key={idx} className="form-fields ingredient-row">
+            <label className="form-field">Ingredient
+              <select value={ing.item_id} onChange={e => updateIng(idx, 'item_id', e.target.value)} required>
+                <option value="">Select item</option>
+                {inventory.map(i => <option key={i.item_id} value={i.item_id}>{i.item_name}</option>)}
+              </select>
+            </label>
+            <label className="form-field">Quantity per serving
+              <input type="number" step="0.01" value={ing.quantity_per_serving} onChange={e => updateIng(idx, 'quantity_per_serving', e.target.value)} required />
+            </label>
+            <button type="button" onClick={() => removeIngRow(idx)} className="button danger">Remove</button>
           </div>
         ))}
-        <button type="button" onClick={addIngRow} className="button secondary">+ Add Ingredient</button>
-        <button type="submit" className="button primary">Create Recipe</button>
+        <div className="form-actions">
+          <button type="submit" className="button primary">Create Recipe</button>
+          <button type="button" onClick={addIngRow} className="button secondary">Add Ingredient</button>
+        </div>
       </form>
       {recipes.map(r => (
         <div key={r.recipe_id} className="card">

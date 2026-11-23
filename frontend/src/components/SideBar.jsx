@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { sidebarRoles, defaultSidebarRoles } from '../sidebarRoles';
 
@@ -20,12 +20,12 @@ export default function SideBar({ roles = defaultSidebarRoles, onLogout }) {
     <aside className="sidebar">
       <h2 className="sidebar-title">MealSync</h2>
       
-      <nav className="sidebar-nav">
-        <Link to="/dashboard">For You</Link>
+      <nav className="sidebar-nav" aria-label="Main navigation">
+        <NavLink to="/dashboard">For You</NavLink>
         {sidebarRoles.filter(role => roles.includes(role.id)).map(role => (
-          <Link key={role.id} to={role.path}>{role.label}</Link>
+          <NavLink key={role.id} to={role.path}>{role.label}</NavLink>
         ))}
-        <Link to="/profile">Profile</Link>
+        <NavLink to="/profile">Profile</NavLink>
       </nav>
 
       <button onClick={handleSignOut} className="signout-btn">

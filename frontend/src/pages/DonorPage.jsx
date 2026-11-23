@@ -80,10 +80,10 @@ function AllEvents({ onBack }) {
       {message && <p style={{ color: 'green' }}>{message}</p>}
       {error && <p className="error" role="alert">{error}</p>}
       <input
+        className="event-search"
         placeholder="Search by org, kitchen, city, state..."
         value={search}
         onChange={e => setSearch(e.target.value)}
-        style={{ marginBottom: '20px', padding: '8px', width: '100%' }}
       />
       {filtered.length === 0 ? <p>No events found.</p> : filtered.map(e => (
         <div key={e.event_id} className="card">
@@ -91,18 +91,16 @@ function AllEvents({ onBack }) {
           <p>Kitchen: {e.kitchen_name || "N/A"} | {e.city}, {e.state} on {e.event_date}</p>
           <p>Expected: {e.expected_people} people</p>
           {donatingEvent === e.event_id ? (
-            <form onSubmit={handleDonate} style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-              <input
-                type="number"
-                min="1"
-                placeholder="Amount (₹)"
-                value={amount}
-                disabled={sending}
-                onChange={ev => setAmount(ev.target.value)}
-                style={{ padding: '6px', width: '150px' }}
-              />
-              <button type="submit" disabled={sending} className="button primary">Confirm Donation</button>
-              <button type="button" disabled={sending} onClick={() => { setDonatingEvent(null); setAmount(''); }} className="button secondary">Cancel</button>
+            <form className="stack-form inline-form" onSubmit={handleDonate}>
+              <label className="form-field">Amount (₹)
+                <input type="number" min="1" value={amount} disabled={sending}
+                  onChange={ev => setAmount(ev.target.value)} />
+              </label>
+              <div className="form-actions">
+                <button type="submit" disabled={sending} className="button primary">Confirm Donation</button>
+                <button type="button" disabled={sending} onClick={() => { setDonatingEvent(null); setAmount(''); }}
+                  className="button secondary">Cancel</button>
+              </div>
             </form>
           ) : (
             <button disabled={sending} onClick={() => setDonatingEvent(e.event_id)} className="button primary">Donate</button>

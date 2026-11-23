@@ -44,9 +44,10 @@ export default function ProfilePage({ user, onSave }) {
       <h1>Profile</h1>
       <p>MealSync ID <strong>{user.mealsync_id}</strong></p>
       <form className="stack-form" onSubmit={handleSubmit}>
-        <label htmlFor="profile-username">Username</label>
-        <input id="profile-username" value={name} required maxLength={120} disabled={saving}
-          onChange={event => { setName(event.target.value); setMessage(''); }} />
+        <label className="form-field">Username
+          <input value={name} required maxLength={120} disabled={saving}
+            onChange={event => { setName(event.target.value); setMessage(''); }} />
+        </label>
         <fieldset className="profile-roles" disabled={saving} aria-describedby="profile-roles-help">
           <legend>Roles interested in</legend>
           <p id="profile-roles-help">Choose at least one role to show in the sidebar.</p>
@@ -58,7 +59,9 @@ export default function ProfilePage({ user, onSave }) {
             </label>
           ))}
         </fieldset>
-        <button type="submit" className="button primary" disabled={saving}>Save Profile</button>
+        <div className="form-actions">
+          <button type="submit" className="button primary" disabled={saving}>Save Profile</button>
+        </div>
         {message && <p role="status">{message}</p>}
         {error && <p className="error" role="alert">{error}</p>}
       </form>
