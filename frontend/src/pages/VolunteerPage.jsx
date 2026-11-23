@@ -27,7 +27,7 @@ export default function VolunteerPage({ user }) {
 
 function ProfileTab({ userId, onBack }) {
   const [form, setForm] = useState({
-    description: '', city: '', state: '', flexibility: 3
+    description: '', city: '', state: '', flexibility: 1
   });
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -94,9 +94,11 @@ function ProfileTab({ userId, onBack }) {
         <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows="3" />
         <IndiaLocationFields state={form.state} city={form.city}
           onChange={location => setForm(current => ({ ...current, ...location }))} />
-        <label>Flexibility (1-5)</label>
-        <select value={form.flexibility} onChange={e => setForm({...form, flexibility: parseInt(e.target.value)})}>
-          {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+        <label htmlFor="volunteer-flexibility">Flexibility</label>
+        <select id="volunteer-flexibility" value={form.flexibility}
+          onChange={e => setForm({...form, flexibility: Number(e.target.value)})}>
+          <option value={1}>Same city only</option>
+          <option value={2}>Same state only</option>
         </select>
         {legacyAvailability && <p>Previously saved availability: {legacyAvailability}</p>}
         <label htmlFor="availability-start">Availability Start Date</label>

@@ -3,6 +3,8 @@ import json
 from db import db
 
 SIDEBAR_ROLES = ("volunteer", "donor", "organization", "kitchen")
+SAME_CITY_ONLY = 1
+SAME_STATE_ONLY = 2
 
 class User(db.Model):
     __tablename__ = "users"
@@ -29,8 +31,12 @@ class VolunteerProfile(db.Model):
     description = db.Column(db.Text, nullable=True)
     city = db.Column(db.String(100), nullable=True)
     state = db.Column(db.String(100), nullable=True)
-    flexibility = db.Column(db.Integer, default=3)
+    flexibility = db.Column(db.Integer, default=SAME_CITY_ONLY)
     available_dates = db.Column(db.String(255), nullable=True)
 
     # Relationships
     user = db.relationship("User", back_populates="volunteer_profile")
+
+    @property
+    def matching_flexibility(self):
+        return SAME_STATE_ONLY if self.flexibility == SAME_STATE_ONLY else SAME_CITY_ONLY

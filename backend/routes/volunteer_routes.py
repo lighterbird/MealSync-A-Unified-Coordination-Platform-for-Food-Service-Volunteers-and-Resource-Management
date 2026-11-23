@@ -3,6 +3,7 @@ from datetime import date
 from flask import Blueprint, request, jsonify, session
 from db import db
 from models import Event, VolunteerRegistration, VolunteerProfile, User
+from models.user import SAME_CITY_ONLY, SAME_STATE_ONLY
 from logic.matching import get_matching_events_for_volunteer
 
 volunteer_bp = Blueprint("volunteer", __name__, url_prefix="/api/volunteers")
@@ -25,13 +26,18 @@ def get_profile(mealsync_id):
         "description": p.description,
         "city": p.city,
         "state": p.state,
-        "flexibility": p.flexibility,
+        "flexibility": p.matching_flexibility,
         "available_dates": p.available_dates
     })
 
 @volunteer_bp.route("/profile/<mealsync_id>", methods=["POST", "PUT"])
 def save_profile(mealsync_id):
     data = request.get_json()
+    if "flexibility" in data:
+        flexibility = data["flexibility"]
+        if type(flexibility) is not int or flexibility not in (SAME_CITY_ONLY, SAME_STATE_ONLY):
+            return jsonify({"error": "Choose Same city only or Same state only."}), 400
+
     available_dates = data.get("available_dates")
     if available_dates is not None:
         try:
