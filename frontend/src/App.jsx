@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import SideBar from './components/SideBar';
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
@@ -24,6 +24,8 @@ export default function App() {
     localStorage.setItem('mealsync_user', JSON.stringify(userData));
   };
 
+  const handleProfileUpdate = changes => handleLogin({ ...user, ...changes });
+
   // Wrapper to clear user on logout
   const handleLogout = async () => {
     const response = await fetch('/api/auth/signout', { method: 'POST' });
@@ -36,7 +38,7 @@ export default function App() {
     <BrowserRouter>
       <div className="app-container">
         {/* Only show sidebar if logged in */}
-        {user && <SideBar onLogout={handleLogout} />}
+        {user && <SideBar roles={user.sidebar_roles} onLogout={handleLogout} />}
         
         <main className="main-content">
           <Routes>
@@ -51,7 +53,7 @@ export default function App() {
             <Route path="/organization" element={user ? <OrganizationPage user={user} /> : <Navigate to="/signin" />} />
             <Route path="/kitchen" element={user ? <CommunityKitchenPage user={user} /> : <Navigate to="/signin" />} />
             <Route path="/donor" element={user ? <DonorPage user={user} /> : <Navigate to="/signin" />} />
-            <Route path="/profile" element={user ? <ProfilePage user={user} /> : <Navigate to="/signin" />} />
+            <Route path="/profile" element={user ? <ProfilePage user={user} onSave={handleProfileUpdate} /> : <Navigate to="/signin" />} />
           </Routes>
         </main>
       </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import IndiaLocationFields from '../components/IndiaLocationFields';
 
 export default function CommunityKitchenPage({ user }) {
   const [kitchens, setKitchens] = useState([]);
@@ -46,14 +47,14 @@ function KitchenCard({ kitchen, onSelect, onRefresh }) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(kitchen.name);
   const [desc, setDesc] = useState(kitchen.description);
-  const [city, setCity] = useState(kitchen.city);
-  const [state, setState] = useState(kitchen.state);
+  const [location, setLocation] = useState({ city: kitchen.city, state: kitchen.state });
 
-  const handleUpdate = async () => {
+  const handleUpdate = async (event) => {
+    event.preventDefault();
     await fetch(`/api/kitchens/${kitchen.kitchen_id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description: desc, city, state })
+      body: JSON.stringify({ name, description: desc, ...location })
     });
     setIsEditing(false);
     onRefresh();
@@ -67,14 +68,13 @@ function KitchenCard({ kitchen, onSelect, onRefresh }) {
 
   if (isEditing) {
     return (
-      <div className="card">
+      <form className="card stack-form" onSubmit={handleUpdate}>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Name" />
         <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" />
-        <input value={city} onChange={e => setCity(e.target.value)} placeholder="City" />
-        <input value={state} onChange={e => setState(e.target.value)} placeholder="State" />
-        <button onClick={handleUpdate} className="button primary">Save</button>
-        <button onClick={() => setIsEditing(false)} className="button secondary">Cancel</button>
-      </div>
+        <IndiaLocationFields {...location} onChange={setLocation} required />
+        <button type="submit" className="button primary">Save</button>
+        <button type="button" onClick={() => setIsEditing(false)} className="button secondary">Cancel</button>
+      </form>
     );
   }
 
@@ -96,14 +96,14 @@ function NewKitchenCard({ userId, onCreated }) {
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
+  const [location, setLocation] = useState({ city: '', state: '' });
 
-  const handleCreate = async () => {
+  const handleCreate = async (event) => {
+    event.preventDefault();
     await fetch('/api/kitchens', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ admin_mealsync_id: userId, name, description: desc, city, state })
+      body: JSON.stringify({ admin_mealsync_id: userId, name, description: desc, ...location })
     });
     setIsCreating(false);
     onCreated();
@@ -111,14 +111,13 @@ function NewKitchenCard({ userId, onCreated }) {
 
   if (isCreating) {
     return (
-      <div className="card">
+      <form className="card stack-form" onSubmit={handleCreate}>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Kitchen Name" />
         <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Description" />
-        <input value={city} onChange={e => setCity(e.target.value)} placeholder="City" />
-        <input value={state} onChange={e => setState(e.target.value)} placeholder="State" />
-        <button onClick={handleCreate} className="button primary">Create</button>
-        <button onClick={() => setIsCreating(false)} className="button secondary">Cancel</button>
-      </div>
+        <IndiaLocationFields {...location} onChange={setLocation} required />
+        <button type="submit" className="button primary">Create</button>
+        <button type="button" onClick={() => setIsCreating(false)} className="button secondary">Cancel</button>
+      </form>
     );
   }
 

@@ -1,4 +1,8 @@
+import json
+
 from db import db
+
+SIDEBAR_ROLES = ("volunteer", "donor", "organization", "kitchen")
 
 class User(db.Model):
     __tablename__ = "users"
@@ -7,6 +11,10 @@ class User(db.Model):
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    sidebar_roles = db.Column(
+        db.JSON, nullable=False,
+        server_default=json.dumps(SIDEBAR_ROLES)
+    )
 
     # Relationships
     volunteer_profile = db.relationship("VolunteerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")

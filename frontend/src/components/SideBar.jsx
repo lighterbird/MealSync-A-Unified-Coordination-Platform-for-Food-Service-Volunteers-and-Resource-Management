@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { sidebarRoles, defaultSidebarRoles } from '../sidebarRoles';
 
-export default function SideBar({ onLogout }) {
+export default function SideBar({ roles = defaultSidebarRoles, onLogout }) {
   const navigate = useNavigate();
   const [signOutError, setSignOutError] = useState('');
 
@@ -21,10 +22,9 @@ export default function SideBar({ onLogout }) {
       
       <nav className="sidebar-nav">
         <Link to="/dashboard">For You</Link>
-        <Link to="/volunteer">Volunteer</Link>
-        <Link to="/organization">Organization</Link>
-        <Link to="/kitchen">Community Kitchen</Link>
-        <Link to="/donor">Donor</Link>
+        {sidebarRoles.filter(role => roles.includes(role.id)).map(role => (
+          <Link key={role.id} to={role.path}>{role.label}</Link>
+        ))}
         <Link to="/profile">Profile</Link>
       </nav>
 

@@ -16,42 +16,54 @@ export default function DonorPage({ user }) {
     );
   }
 
-  if (view === 'all-events') return <AllEvents user={user} onBack={() => setView('menu')} />;
+  if (view === 'all-events') return <AllEvents onBack={() => setView('menu')} />;
   if (view === 'your-events') return <YourEvents user={user} onBack={() => setView('menu')} />;
 }
 
-function AllEvents({ user, onBack }) {
+function AllEvents({ onBack }) {
   const [events, setEvents] = useState([]);
   const [search, setSearch] = useState('');
   const [donatingEvent, setDonatingEvent] = useState(null);
   const [amount, setAmount] = useState('');
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     fetch('/api/donations/all-events')
-      .then(r => r.json())
-      .then(setEvents);
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load donation events.');
+        setEvents(data);
+      })
+      .catch(err => setError(err.message));
   }, []);
 
   const handleDonate = async (e) => {
     e.preventDefault();
+    setError('');
+    setMessage('');
     if (!amount || parseFloat(amount) <= 0) {
-      setMessage('Enter a valid amount');
+      setError('Enter a valid amount.');
       return;
     }
-    await fetch('/api/donations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        event_id: donatingEvent,
-        donor_mealsync_id: user.mealsync_id,
-        amount: amount
-      })
-    });
-    setMessage(`Thank you for donating ₹${amount}!`);
-    setDonatingEvent(null);
-    setAmount('');
-    setTimeout(() => setMessage(''), 3000);
+    setSending(true);
+    try {
+      const response = await fetch('/api/donations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: donatingEvent, amount })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not complete the donation.');
+      setMessage(`Thank you for donating ₹${amount}!`);
+      setDonatingEvent(null);
+      setAmount('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
   };
 
   const filtered = events.filter(e =>
@@ -66,6 +78,7 @@ function AllEvents({ user, onBack }) {
       <button onClick={onBack} className="button secondary">&larr; Back</button>
       <h2>All Events</h2>
       {message && <p style={{ color: 'green' }}>{message}</p>}
+      {error && <p className="error" role="alert">{error}</p>}
       <input
         placeholder="Search by org, kitchen, city, state..."
         value={search}
@@ -84,14 +97,15 @@ function AllEvents({ user, onBack }) {
                 min="1"
                 placeholder="Amount (₹)"
                 value={amount}
+                disabled={sending}
                 onChange={ev => setAmount(ev.target.value)}
                 style={{ padding: '6px', width: '150px' }}
               />
-              <button type="submit" className="button primary">Confirm Donation</button>
-              <button type="button" onClick={() => { setDonatingEvent(null); setAmount(''); }} className="button secondary">Cancel</button>
+              <button type="submit" disabled={sending} className="button primary">Confirm Donation</button>
+              <button type="button" disabled={sending} onClick={() => { setDonatingEvent(null); setAmount(''); }} className="button secondary">Cancel</button>
             </form>
           ) : (
-            <button onClick={() => setDonatingEvent(e.event_id)} className="button primary">Donate</button>
+            <button disabled={sending} onClick={() => setDonatingEvent(e.event_id)} className="button primary">Donate</button>
           )}
         </div>
       ))}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import IndiaLocationFields from '../components/IndiaLocationFields';
 
 const donationAmountFormat = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -232,10 +233,8 @@ function CreateEventForm({ orgId, onBack, onCreated }) {
       <h2>Create New Event</h2>
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleSubmit} className="stack-form">
-        <label>City</label>
-        <input required value={form.city} onChange={e => setForm({...form, city: e.target.value})} />
-        <label>State</label>
-        <input required value={form.state} onChange={e => setForm({...form, state: e.target.value})} />
+        <IndiaLocationFields state={form.state} city={form.city} required
+          onChange={location => setForm(current => ({ ...current, ...location }))} />
         <label>Date</label>
         <input type="date" required value={form.event_date} onChange={e => setForm({...form, event_date: e.target.value})} />
         <label>Expected People</label>

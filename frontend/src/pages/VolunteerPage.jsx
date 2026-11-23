@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import IndiaLocationFields from '../components/IndiaLocationFields';
 
 export default function VolunteerPage({ user }) {
   const [view, setView] = useState('menu');
@@ -91,10 +92,8 @@ function ProfileTab({ userId, onBack }) {
       <form onSubmit={handleSubmit} className="stack-form">
         <label>Description</label>
         <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows="3" />
-        <label>City</label>
-        <input value={form.city} onChange={e => setForm({...form, city: e.target.value})} />
-        <label>State</label>
-        <input value={form.state} onChange={e => setForm({...form, state: e.target.value})} />
+        <IndiaLocationFields state={form.state} city={form.city}
+          onChange={location => setForm(current => ({ ...current, ...location }))} />
         <label>Flexibility (1-5)</label>
         <select value={form.flexibility} onChange={e => setForm({...form, flexibility: parseInt(e.target.value)})}>
           {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}

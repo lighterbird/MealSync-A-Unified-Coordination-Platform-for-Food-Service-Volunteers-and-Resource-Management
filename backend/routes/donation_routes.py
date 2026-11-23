@@ -1,6 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from db import db
-from models import Event, Donation
+from models import Event, Donation, Organization
 
 donation_bp = Blueprint("donation", __name__, url_prefix="/api/donations")
 
@@ -12,7 +12,13 @@ def generate_donation_id():
 
 @donation_bp.route("/all-events", methods=["GET"])
 def get_floated_events():
-    events = Event.query.filter_by(status="floated").all()
+    donor_id = session.get("mealsync_id")
+    if not donor_id:
+        return jsonify({"error": "Sign in to view donation events."}), 401
+
+    events = Event.query.join(Event.organization).filter(
+        Event.status == "floated", Organization.admin_mealsync_id != donor_id
+    ).all()
     return jsonify([{
         "event_id": e.event_id,
         "org_name": e.organization.name,
@@ -25,14 +31,22 @@ def get_floated_events():
 
 @donation_bp.route("", methods=["POST"])
 def make_donation():
+    donor_id = session.get("mealsync_id")
+    if not donor_id:
+        return jsonify({"error": "Sign in to make a donation."}), 401
+
     data = request.get_json()
-    print("RECEIVED DATA:", data)
     event_id = data.get("event_id")
-    donor_mealsync_id = data.get("donor_mealsync_id")
     amount = data.get("amount")
 
-    if not all([event_id, donor_mealsync_id, amount]):
+    if not all([event_id, amount]):
         return jsonify({"error": "Missing required fields"}), 400
+
+    event = db.session.get(Event, event_id)
+    if not event:
+        return jsonify({"error": "Event not found."}), 404
+    if event.organization.admin_mealsync_id == donor_id:
+        return jsonify({"error": "You cannot donate to an event run by your organization."}), 403
 
     try:
         amount = float(amount)
@@ -44,7 +58,7 @@ def make_donation():
     donation = Donation(
         donation_id=generate_donation_id(),
         event_id=event_id,
-        donor_mealsync_id=donor_mealsync_id,
+        donor_mealsync_id=donor_id,
         amount=amount
     )
     db.session.add(donation)
