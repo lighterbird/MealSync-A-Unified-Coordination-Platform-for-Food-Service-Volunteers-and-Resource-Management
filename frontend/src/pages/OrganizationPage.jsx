@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 
+const donationAmountFormat = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+});
+
 export default function OrganizationPage({ user }) {
   const [orgs, setOrgs] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState(null);
@@ -183,6 +188,7 @@ function InsideOrg({ org, onBack }) {
               <span className={`status-badge ${ev.status}`}>{ev.status.toUpperCase()}</span>
             </div>
             <p>Expected: {ev.expected_people} people | Kitchen: {ev.kitchen_name || "Not Assigned"}</p>
+            <p>Total donations: {donationAmountFormat.format(ev.total_donations)}</p>
             
             <div className="card-actions">
               {ev.status === 'proposed' && (
