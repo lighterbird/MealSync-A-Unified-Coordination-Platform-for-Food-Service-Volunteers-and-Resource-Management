@@ -132,7 +132,6 @@ function AllEvents({ userId, onBack }) {
   const filtered = events.filter(e => {
     const matchSearch = search === '' ||
       e.org_name.toLowerCase().includes(search.toLowerCase()) ||
-      (e.kitchen_name && e.kitchen_name.toLowerCase().includes(search.toLowerCase())) ||
       e.city.toLowerCase().includes(search.toLowerCase()) ||
       e.state.toLowerCase().includes(search.toLowerCase());
     const matchDate = dateFilter === '' || e.event_date === dateFilter;
@@ -144,13 +143,13 @@ function AllEvents({ userId, onBack }) {
       <button onClick={onBack} className="button secondary">&larr; Back</button>
       <h2>All Floated Events</h2>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <input placeholder="Search by org, kitchen, city, state..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, padding: '8px' }} />
+        <input placeholder="Search by org, city, state..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, padding: '8px' }} />
         <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ padding: '8px' }} />
       </div>
       {filtered.length === 0 ? <p>No events found.</p> : filtered.map(e => (
         <div key={e.event_id} className="card">
           <h3>{e.event_id} | {e.org_name}</h3>
-          <p>Kitchen: {e.kitchen_name || "N/A"} | {e.city}, {e.state} on {e.event_date}</p>
+          <p>{e.city}, {e.state} on {e.event_date}</p>
           <p>Expected: {e.expected_people} people</p>
           {!e.already_applied && (
             <button onClick={() => handleApply(e.event_id)} className="button primary">Apply</button>
@@ -183,7 +182,7 @@ function EventsForYou({ userId, onBack }) {
       {events.length === 0 ? <p>No matching events.</p> : events.map(e => (
         <div key={e.event_id} className="card">
           <h3>{e.event_id} | {e.org_name}</h3>
-          <p>Kitchen: {e.kitchen_name || "N/A"} | {e.city}, {e.state} on {e.event_date}</p>
+          <p>{e.city}, {e.state} on {e.event_date}</p>
           <p>Expected: {e.expected_people} people</p>
           <button onClick={() => handleApply(e.event_id)} className="button primary">Apply</button>
         </div>
@@ -237,7 +236,7 @@ function RegisteredEvents({ userId, onBack }) {
       {events.length === 0 ? <p>No events yet.</p> : events.map(e => (
         <div key={e.registration_id} className="card">
           <h3>{e.event_id} | {e.org_name}</h3>
-          <p>Kitchen: {e.kitchen_name || "N/A"} | {e.city}, {e.state} on {e.event_date}</p>
+          <p>{e.city}, {e.state} on {e.event_date}</p>
           <div className="card-actions">
             {e.tags.map(t => <span key={t} className={`status-badge ${t}`}>{t.toUpperCase()}</span>)}
           </div>

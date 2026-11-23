@@ -1,6 +1,9 @@
+from datetime import date
+
 from flask import Blueprint, request, jsonify
 from db import db
 from models import Donation, Event, KitchenRequest, VolunteerRegistration, User
+from models.location import SAME_CITY_ONLY, SAME_STATE_ONLY
 
 event_bp = Blueprint("event", __name__, url_prefix="/api/events")
 
@@ -33,6 +36,7 @@ def get_org_events(org_id):
         "state": e.state,
         "event_date": e.event_date.isoformat(),
         "expected_people": e.expected_people,
+        "kitchen_flexibility": e.kitchen_flexibility,
         "status": e.status,
         "kitchen_name": e.kitchen.name if e.kitchen else None,
         "total_donations": format(donation_totals.get(e.event_id, 0), ".2f"),
@@ -46,9 +50,18 @@ def create_event():
     state = data.get("state")
     event_date = data.get("event_date")
     expected_people = data.get("expected_people")
+    kitchen_flexibility = data.get("kitchen_flexibility", SAME_CITY_ONLY)
 
-    if not all([org_id, city, state, event_date, expected_people]):
+    if not all([org_id, city, state, event_date]):
         return jsonify({"error": "Missing required fields"}), 400
+    if type(expected_people) is not int or expected_people < 1:
+        return jsonify({"error": "Expected people must be a positive whole number."}), 400
+    if type(kitchen_flexibility) is not int or kitchen_flexibility not in (SAME_CITY_ONLY, SAME_STATE_ONLY):
+        return jsonify({"error": "Choose Same city only or Same state only."}), 400
+    try:
+        event_date = date.fromisoformat(event_date)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Enter a valid event date."}), 400
 
     new_event = Event(
         event_id=generate_event_id(),
@@ -57,6 +70,7 @@ def create_event():
         state=state,
         event_date=event_date,
         expected_people=expected_people,
+        kitchen_flexibility=kitchen_flexibility,
         status="proposed"
     )
     db.session.add(new_event)
@@ -86,20 +100,27 @@ def get_kitchen_requests(event_id):
 @event_bp.route("/<event_id>/kitchen-requests/<request_id>", methods=["PUT"])
 def handle_kitchen_request(event_id, request_id):
     data = request.get_json()
-    action = data.get("action") # "accept" or "reject"
-    
-    req = KitchenRequest.query.get(request_id)
-    event = Event.query.get(event_id)
-    
+    action = data.get("action")
+    if action not in ("accept", "reject"):
+        return jsonify({"error": "Choose accept or reject."}), 400
+    event = db.session.get(Event, event_id, with_for_update=True)
+    req = KitchenRequest.query.filter_by(event_id=event_id, request_id=request_id).first()
+
     if not req or not event:
         return jsonify({"error": "Request or Event not found"}), 404
+    if event.status != "proposed" or req.status != "pending":
+        return jsonify({"error": "This kitchen request is no longer pending for a proposed event."}), 409
 
     if action == "accept":
         req.status = "accepted"
         event.status = "floated"
         event.kitchen_id = req.kitchen_id
+        event.city = req.kitchen.city
+        event.state = req.kitchen.state
         # Reject all other pending requests for this event
-        other_reqs = KitchenRequest.query.filter(KitchenRequest.event_id == event_id, KitchenRequest.request_id != request_id).all()
+        other_reqs = KitchenRequest.query.filter_by(event_id=event_id, status="pending").filter(
+            KitchenRequest.request_id != request_id
+        ).all()
         for other in other_reqs:
             other.status = "rejected"
     else:

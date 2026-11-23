@@ -84,6 +84,9 @@ def delete_kitchen(kitchen_id):
 
 @kitchen_bp.route("/<kitchen_id>/all-events", methods=["GET"])
 def all_proposed_events(kitchen_id):
+    kitchen = db.session.get(CommunityKitchen, kitchen_id)
+    if not kitchen:
+        return jsonify({"error": "Kitchen not found."}), 404
     events = Event.query.filter_by(status="proposed").all()
     applied = {r.event_id for r in KitchenRequest.query.filter_by(kitchen_id=kitchen_id).all()}
     return jsonify([{
@@ -98,7 +101,9 @@ def all_proposed_events(kitchen_id):
 
 @kitchen_bp.route("/<kitchen_id>/events-for-you", methods=["GET"])
 def events_for_you(kitchen_id):
-    k = CommunityKitchen.query.get(kitchen_id)
+    k = db.session.get(CommunityKitchen, kitchen_id)
+    if not k:
+        return jsonify({"error": "Kitchen not found."}), 404
     events = get_matching_events(k)
     return jsonify([{
         "event_id": e.event_id,
@@ -138,6 +143,12 @@ def your_events(kitchen_id):
 
 @kitchen_bp.route("/<kitchen_id>/apply/<event_id>", methods=["POST"])
 def apply_for_event(kitchen_id, event_id):
+    kitchen = db.session.get(CommunityKitchen, kitchen_id)
+    event = db.session.get(Event, event_id, with_for_update=True)
+    if not kitchen or not event:
+        return jsonify({"error": "Kitchen or event not found."}), 404
+    if event.status != "proposed":
+        return jsonify({"error": "This event is no longer accepting kitchen requests."}), 409
     existing = KitchenRequest.query.filter_by(event_id=event_id, kitchen_id=kitchen_id).first()
     if existing:
         return jsonify({"error": "Already applied"}), 400
@@ -162,10 +173,26 @@ def get_inventory(kitchen_id):
 @kitchen_bp.route("/<kitchen_id>/inventory", methods=["POST"])
 def add_inventory(kitchen_id):
     data = request.get_json()
+    item_name = data.get("item_name")
+    if not isinstance(item_name, str) or not item_name.strip():
+        return jsonify({"error": "Item name is required."}), 400
+    item_name = item_name.strip()
+
+    # Serialize inventory additions so concurrent requests cannot add the same name.
+    kitchen = db.session.get(CommunityKitchen, kitchen_id, with_for_update=True)
+    if not kitchen:
+        return jsonify({"error": "Kitchen not found."}), 404
+    existing = Inventory.query.filter(
+        Inventory.kitchen_id == kitchen_id,
+        db.func.lower(db.func.trim(Inventory.item_name)) == db.func.lower(item_name),
+    ).first()
+    if existing:
+        return jsonify({"error": "An item with this name already exists in this kitchen."}), 409
+
     item = Inventory(
         item_id=generate_item_id(),
         kitchen_id=kitchen_id,
-        item_name=data["item_name"],
+        item_name=item_name,
         quantity=data["quantity"],
         unit=data["unit"]
     )
@@ -209,8 +236,24 @@ def get_recipes(kitchen_id):
 @kitchen_bp.route("/<kitchen_id>/recipes", methods=["POST"])
 def add_recipe(kitchen_id):
     data = request.get_json()
+    recipe_name = data.get("recipe_name")
+    if not isinstance(recipe_name, str) or not recipe_name.strip():
+        return jsonify({"error": "Recipe name is required."}), 400
+    recipe_name = recipe_name.strip()
+
+    # Serialize recipe additions so concurrent requests cannot add the same name.
+    kitchen = db.session.get(CommunityKitchen, kitchen_id, with_for_update=True)
+    if not kitchen:
+        return jsonify({"error": "Kitchen not found."}), 404
+    existing = Recipe.query.filter(
+        Recipe.kitchen_id == kitchen_id,
+        db.func.lower(db.func.trim(Recipe.recipe_name)) == db.func.lower(recipe_name),
+    ).first()
+    if existing:
+        return jsonify({"error": "A recipe with this name already exists in this kitchen."}), 409
+
     recipe = Recipe(recipe_id=generate_recipe_id(), kitchen_id=kitchen_id,
-                    recipe_name=data["recipe_name"])
+                    recipe_name=recipe_name)
     db.session.add(recipe)
     db.session.flush()
     for ing in data.get("ingredients", []):
@@ -231,6 +274,8 @@ def delete_recipe(recipe_id):
 
 @kitchen_bp.route("/<kitchen_id>/expected-servings", methods=["GET"])
 def expected_servings(kitchen_id):
-    k = CommunityKitchen.query.get(kitchen_id)
+    k = db.session.get(CommunityKitchen, kitchen_id)
+    if not k:
+        return jsonify({"error": "Kitchen not found."}), 404
     val = calculate_expected_servings(k)
     return jsonify({"expected_servings": val})

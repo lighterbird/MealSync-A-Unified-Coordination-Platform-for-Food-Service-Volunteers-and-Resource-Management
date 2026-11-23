@@ -131,12 +131,25 @@ function NewKitchenCard({ userId, onCreated }) {
 function InsideKitchen({ kitchen, onBack }) {
   const [view, setView] = useState('menu');
   const [expectedServings, setExpectedServings] = useState(null);
+  const [servingsError, setServingsError] = useState('');
 
   useEffect(() => {
-    fetch(`/api/kitchens/${kitchen.kitchen_id}/expected-servings`)
-      .then(r => r.json())
-      .then(d => setExpectedServings(d.expected_servings));
-  }, [kitchen]);
+    if (view !== 'menu') return;
+    const controller = new AbortController();
+    fetch(`/api/kitchens/${kitchen.kitchen_id}/expected-servings`, { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error('Could not calculate current servings.');
+        const data = await response.json();
+        if (!controller.signal.aborted) {
+          setExpectedServings(data.expected_servings);
+          setServingsError('');
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setServingsError('Could not calculate current servings.');
+      });
+    return () => controller.abort();
+  }, [kitchen.kitchen_id, view]);
 
   if (view === 'menu') {
     return (
@@ -144,7 +157,9 @@ function InsideKitchen({ kitchen, onBack }) {
         <button onClick={onBack} className="button secondary" style={{ marginBottom: '20px' }}>&larr; Back to Kitchens</button>
         <h1>{kitchen.name}</h1>
         <p>{kitchen.description}</p>
-        <p><strong>Expected Servings (placeholder):</strong> {expectedServings ?? "Calculating..."}</p>
+        {servingsError ? <p className="error" role="alert">{servingsError}</p> : (
+          <p><strong>Current serving capacity:</strong> {expectedServings ?? 'Calculating…'}</p>
+        )}
         <div className="card-actions" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
           <button onClick={() => setView('all-events')} className="button primary">All Events</button>
           <button onClick={() => setView('events-for-you')} className="button primary">Events for You</button>
@@ -156,28 +171,46 @@ function InsideKitchen({ kitchen, onBack }) {
     );
   }
 
-  if (view === 'all-events') return <AllEvents kitchen={kitchen} onBack={() => setView('menu')} />;
-  if (view === 'events-for-you') return <EventsForYou kitchen={kitchen} onBack={() => setView('menu')} />;
+  if (view === 'all-events' || view === 'events-for-you') {
+    return <KitchenEvents key={view} kitchenId={kitchen.kitchen_id} matchedOnly={view === 'events-for-you'}
+      onBack={() => setView('menu')} />;
+  }
   if (view === 'your-events') return <YourEvents kitchen={kitchen} onBack={() => setView('menu')} />;
   if (view === 'inventory') return <InventoryTab kitchen={kitchen} onBack={() => setView('menu')} />;
   if (view === 'recipes') return <RecipesTab kitchen={kitchen} onBack={() => setView('menu')} />;
 }
 
-function AllEvents({ kitchen, onBack }) {
+function KitchenEvents({ kitchenId, matchedOnly, onBack }) {
   const [events, setEvents] = useState([]);
   const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
+  const [applying, setApplying] = useState(false);
+  const endpoint = matchedOnly ? 'events-for-you' : 'all-events';
 
-  useEffect(() => { fetchEvents(); }, [kitchen]);
-
-  const fetchEvents = async () => {
-    const res = await fetch(`/api/kitchens/${kitchen.kitchen_id}/all-events`);
-    const data = await res.json();
-    setEvents(data);
-  };
+  useEffect(() => {
+    fetch(`/api/kitchens/${kitchenId}/${endpoint}`)
+      .then(async response => {
+        if (!response.ok) throw new Error('Could not load events.');
+        setEvents(await response.json());
+      })
+      .catch(err => setError(err.message));
+  }, [kitchenId, endpoint]);
 
   const handleApply = async (eventId) => {
-    await fetch(`/api/kitchens/${kitchen.kitchen_id}/apply/${eventId}`, { method: 'POST' });
-    fetchEvents();
+    setError('');
+    setApplying(true);
+    try {
+      const response = await fetch(`/api/kitchens/${kitchenId}/apply/${eventId}`, { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not apply to the event.');
+      setEvents(current => matchedOnly
+        ? current.filter(event => event.event_id !== eventId)
+        : current.map(event => event.event_id === eventId ? { ...event, already_applied: true } : event));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setApplying(false);
+    }
   };
 
   const filtered = events.filter(e =>
@@ -189,45 +222,19 @@ function AllEvents({ kitchen, onBack }) {
   return (
     <div className="page">
       <button onClick={onBack} className="button secondary">&larr; Back</button>
-      <h2>All Proposed Events</h2>
-      <input placeholder="Search by org, city, state..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: '20px', padding: '8px', width: '100%' }} />
-      {filtered.length === 0 ? <p>No events found.</p> : filtered.map(e => (
+      <h2>{matchedOnly ? 'Events for You' : 'All Proposed Events'}</h2>
+      {error && <p className="error" role="alert">{error}</p>}
+      {!matchedOnly && <input placeholder="Search by org, city, state..." value={search}
+        onChange={e => setSearch(e.target.value)} style={{ marginBottom: '20px', padding: '8px', width: '100%' }} />}
+      {!error && filtered.length === 0 && <p>{matchedOnly ? 'No matching events.' : 'No events found.'}</p>}
+      {filtered.map(e => (
         <div key={e.event_id} className="card">
           <h3>{e.event_id} | {e.org_name}</h3>
           <p>{e.city}, {e.state} on {e.event_date} | Expected: {e.expected_people}</p>
           {!e.already_applied && (
-            <button onClick={() => handleApply(e.event_id)} className="button primary">Apply</button>
+            <button disabled={applying} onClick={() => handleApply(e.event_id)} className="button primary">Apply</button>
           )}
           {e.already_applied && <span style={{ color: 'green' }}>Already Applied</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EventsForYou({ kitchen, onBack }) {
-  const [events, setEvents] = useState([]);
-
-  useEffect(() => {
-    fetch(`/api/kitchens/${kitchen.kitchen_id}/events-for-you`)
-      .then(r => r.json())
-      .then(d => setEvents(d));
-  }, [kitchen]);
-
-  const handleApply = async (eventId) => {
-    await fetch(`/api/kitchens/${kitchen.kitchen_id}/apply/${eventId}`, { method: 'POST' });
-    setEvents(events.filter(e => e.event_id !== eventId));
-  };
-
-  return (
-    <div className="page">
-      <button onClick={onBack} className="button secondary">&larr; Back</button>
-      <h2>Events for You</h2>
-      {events.length === 0 ? <p>No matching events.</p> : events.map(e => (
-        <div key={e.event_id} className="card">
-          <h3>{e.event_id} | {e.org_name}</h3>
-          <p>{e.city}, {e.state} on {e.event_date} | Expected: {e.expected_people}</p>
-          <button onClick={() => handleApply(e.event_id)} className="button primary">Apply</button>
         </div>
       ))}
     </div>
@@ -264,6 +271,7 @@ function InventoryTab({ kitchen, onBack }) {
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ item_name: '', quantity: '', unit: 'units' });
   const [editingId, setEditingId] = useState(null);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => { fetchItems(); }, [kitchen]);
 
@@ -274,25 +282,30 @@ function InventoryTab({ kitchen, onBack }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      await fetch(`/api/kitchens/inventory/${editingId}`, {
-        method: 'PUT',
+    setSaveError('');
+    const url = editingId
+      ? `/api/kitchens/inventory/${editingId}`
+      : `/api/kitchens/${kitchen.kitchen_id}/inventory`;
+    try {
+      const response = await fetch(url, {
+        method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
-    } else {
-      await fetch(`/api/kitchens/${kitchen.kitchen_id}/inventory`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Could not save the item.');
+      }
+      setForm({ item_name: '', quantity: '', unit: 'units' });
+      setEditingId(null);
+      await fetchItems();
+    } catch (err) {
+      setSaveError(err.message);
     }
-    setForm({ item_name: '', quantity: '', unit: 'units' });
-    setEditingId(null);
-    fetchItems();
   };
 
   const handleEdit = (item) => {
+    setSaveError('');
     setEditingId(item.item_id);
     setForm({ item_name: item.item_name, quantity: item.quantity, unit: item.unit });
   };
@@ -307,6 +320,7 @@ function InventoryTab({ kitchen, onBack }) {
     <div className="page">
       <button onClick={onBack} className="button secondary">&larr; Back</button>
       <h2>Inventory</h2>
+      {saveError && <p className="error" role="alert">{saveError}</p>}
       <form onSubmit={handleSubmit} className="stack-form" style={{ marginBottom: '20px' }}>
         <input required placeholder="Item name" value={form.item_name} onChange={e => setForm({...form, item_name: e.target.value})} />
         <input required type="number" step="0.01" placeholder="Quantity" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} />
@@ -333,6 +347,7 @@ function RecipesTab({ kitchen, onBack }) {
   const [inventory, setInventory] = useState([]);
   const [name, setName] = useState('');
   const [ingredients, setIngredients] = useState([{ item_id: '', quantity_per_serving: '' }]);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     fetch(`/api/kitchens/${kitchen.kitchen_id}/recipes`).then(r => r.json()).then(setRecipes);
@@ -349,14 +364,26 @@ function RecipesTab({ kitchen, onBack }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await fetch(`/api/kitchens/${kitchen.kitchen_id}/recipes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipe_name: name, ingredients })
-    });
-    setName('');
-    setIngredients([{ item_id: '', quantity_per_serving: '' }]);
-    fetch(`/api/kitchens/${kitchen.kitchen_id}/recipes`).then(r => r.json()).then(setRecipes);
+    setSaveError('');
+    const url = `/api/kitchens/${kitchen.kitchen_id}/recipes`;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipe_name: name, ingredients })
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Could not save the recipe.');
+      }
+      setName('');
+      setIngredients([{ item_id: '', quantity_per_serving: '' }]);
+      const recipesResponse = await fetch(url);
+      if (!recipesResponse.ok) throw new Error('Could not refresh recipes.');
+      setRecipes(await recipesResponse.json());
+    } catch (err) {
+      setSaveError(err.message);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -369,6 +396,7 @@ function RecipesTab({ kitchen, onBack }) {
     <div className="page">
       <button onClick={onBack} className="button secondary">&larr; Back</button>
       <h2>Recipes</h2>
+      {saveError && <p className="error" role="alert">{saveError}</p>}
       <form onSubmit={handleSubmit} className="stack-form" style={{ marginBottom: '20px' }}>
         <input required placeholder="Recipe name" value={name} onChange={e => setName(e.target.value)} />
         {ingredients.map((ing, idx) => (

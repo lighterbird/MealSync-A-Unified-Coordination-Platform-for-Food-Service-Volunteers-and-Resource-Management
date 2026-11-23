@@ -1,4 +1,5 @@
 from db import db
+from .location import SAME_CITY_ONLY
 
 class Event(db.Model):
     __tablename__ = "events"
@@ -10,6 +11,7 @@ class Event(db.Model):
     state = db.Column(db.String(100), nullable=False)
     event_date = db.Column(db.Date, nullable=False)
     expected_people = db.Column(db.Integer, nullable=False)
+    kitchen_flexibility = db.Column(db.Integer, nullable=False, server_default=str(SAME_CITY_ONLY))
     status = db.Column(db.String(20), default="proposed")
 
     # Relationships

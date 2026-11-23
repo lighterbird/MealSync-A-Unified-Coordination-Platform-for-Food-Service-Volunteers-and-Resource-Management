@@ -3,7 +3,7 @@ from datetime import date
 from flask import Blueprint, request, jsonify, session
 from db import db
 from models import Event, VolunteerRegistration, VolunteerProfile, User
-from models.user import SAME_CITY_ONLY, SAME_STATE_ONLY
+from models.location import SAME_CITY_ONLY, SAME_STATE_ONLY
 from logic.matching import get_matching_events_for_volunteer
 
 volunteer_bp = Blueprint("volunteer", __name__, url_prefix="/api/volunteers")
@@ -69,7 +69,6 @@ def all_events(mealsync_id):
     return jsonify([{
         "event_id": e.event_id,
         "org_name": e.organization.name,
-        "kitchen_name": e.kitchen.name if e.kitchen else None,
         "city": e.city,
         "state": e.state,
         "event_date": e.event_date.isoformat(),
@@ -83,7 +82,6 @@ def events_for_you(mealsync_id):
     return jsonify([{
         "event_id": e.event_id,
         "org_name": e.organization.name,
-        "kitchen_name": e.kitchen.name if e.kitchen else None,
         "city": e.city,
         "state": e.state,
         "event_date": e.event_date.isoformat(),
@@ -126,7 +124,6 @@ def registered_events(mealsync_id):
             "registration_id": r.registration_id,
             "event_id": e.event_id,
             "org_name": e.organization.name,
-            "kitchen_name": e.kitchen.name if e.kitchen else None,
             "city": e.city,
             "state": e.state,
             "event_date": e.event_date.isoformat(),

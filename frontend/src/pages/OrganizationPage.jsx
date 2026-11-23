@@ -189,6 +189,9 @@ function InsideOrg({ org, onBack }) {
               <span className={`status-badge ${ev.status}`}>{ev.status.toUpperCase()}</span>
             </div>
             <p>Expected: {ev.expected_people} people | Kitchen: {ev.kitchen_name || "Not Assigned"}</p>
+            {ev.status === 'proposed' && (
+              <p>Kitchen matching preference: {ev.kitchen_flexibility === 2 ? 'Same state only' : 'Same city only'}</p>
+            )}
             <p>Total donations: {donationAmountFormat.format(ev.total_donations)}</p>
             
             <div className="card-actions">
@@ -208,7 +211,7 @@ function InsideOrg({ org, onBack }) {
 }
 
 function CreateEventForm({ orgId, onBack, onCreated }) {
-  const [form, setForm] = useState({ city: '', state: '', event_date: '', expected_people: '' });
+  const [form, setForm] = useState({ city: '', state: '', event_date: '', expected_people: '', kitchen_flexibility: 1 });
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -235,6 +238,12 @@ function CreateEventForm({ orgId, onBack, onCreated }) {
       <form onSubmit={handleSubmit} className="stack-form">
         <IndiaLocationFields state={form.state} city={form.city} required
           onChange={location => setForm(current => ({ ...current, ...location }))} />
+        <label htmlFor="kitchen-flexibility">Kitchen matching preference</label>
+        <select id="kitchen-flexibility" value={form.kitchen_flexibility}
+          onChange={e => setForm({ ...form, kitchen_flexibility: Number(e.target.value) })}>
+          <option value={1}>Same city only</option>
+          <option value={2}>Same state only</option>
+        </select>
         <label>Date</label>
         <input type="date" required value={form.event_date} onChange={e => setForm({...form, event_date: e.target.value})} />
         <label>Expected People</label>
@@ -247,6 +256,7 @@ function CreateEventForm({ orgId, onBack, onCreated }) {
 
 function ManageKitchenRequests({ event, onBack }) {
   const [requests, setRequests] = useState([]);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetch(`/api/events/${event.event_id}/kitchen-requests`)
@@ -255,18 +265,26 @@ function ManageKitchenRequests({ event, onBack }) {
   }, [event]);
 
   const handleAction = async (reqId, action) => {
-    await fetch(`/api/events/${event.event_id}/kitchen-requests/${reqId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action })
-    });
-    onBack(); // Reload on exit
+    setError('');
+    try {
+      const response = await fetch(`/api/events/${event.event_id}/kitchen-requests/${reqId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not update the kitchen request.');
+      onBack();
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
     <div className="page">
       <button onClick={onBack} className="button secondary">&larr; Back to Events</button>
       <h2>Kitchen Requests for {event.event_id}</h2>
+      {error && <p className="error" role="alert">{error}</p>}
       {requests.length === 0 ? <p>No kitchens have applied yet.</p> : requests.map(r => (
         <div key={r.request_id} className="card">
           <h3>{r.kitchen_name} ({r.kitchen_city}, {r.kitchen_state})</h3>

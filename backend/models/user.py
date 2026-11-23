@@ -1,10 +1,9 @@
 import json
 
 from db import db
+from .location import SAME_CITY_ONLY, SAME_STATE_ONLY
 
 SIDEBAR_ROLES = ("volunteer", "donor", "organization", "kitchen")
-SAME_CITY_ONLY = 1
-SAME_STATE_ONLY = 2
 
 class User(db.Model):
     __tablename__ = "users"
