@@ -211,3 +211,77 @@ body {
 }
 
 .status-badge.upcoming { background: #90caf9; color: #0d47a1; }
+
+.for-you-page {
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: clamp(16px, 4vw, 40px);
+  overflow-wrap: anywhere;
+}
+
+.dashboard-actions h2,
+.event-map h3 {
+  margin-top: 0;
+}
+
+.dashboard-actions li + li {
+  margin-top: 8px;
+}
+
+.event-maps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 20px;
+}
+
+.event-map {
+  min-width: 0;
+  margin: 0;
+}
+
+.event-map svg {
+  display: block;
+  width: 100%;
+  max-height: 480px;
+  background: #f4f8f6;
+  border-radius: 8px;
+}
+
+.event-map-region {
+  stroke: #000;
+  stroke-width: 1;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.event-map-legend {
+  margin-top: 12px;
+  font-size: 0.875rem;
+}
+
+.event-map-gradient {
+  height: 12px;
+  margin-block: 4px;
+  border: 1px solid #000;
+}
+
+.event-map-scale {
+  display: flex;
+  justify-content: space-between;
+}
+
+.event-map-credit {
+  font-size: 0.8rem;
+}
+
+@media (max-width: 600px) {
+  .app-container:has(.for-you-page) .sidebar {
+    width: 112px;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+
+  .app-container:has(.for-you-page) .sidebar-nav a {
+    padding-inline: 12px;
+  }
+}

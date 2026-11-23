@@ -22,6 +22,7 @@ class CommunityKitchen(db.Model):
     description = db.Column(db.Text, nullable=True)
     city = db.Column(db.String(100), nullable=False)
     state = db.Column(db.String(100), nullable=False)
+    expected_servings = db.Column(db.BigInteger, nullable=False, server_default="0")
 
     # Relationships
     admin = db.relationship("User", back_populates="kitchens")

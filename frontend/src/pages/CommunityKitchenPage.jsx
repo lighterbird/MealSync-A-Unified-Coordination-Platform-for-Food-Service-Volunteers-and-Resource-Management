@@ -312,8 +312,17 @@ function InventoryTab({ kitchen, onBack }) {
 
   const handleDelete = async (itemId) => {
     if (!window.confirm("Delete this item?")) return;
-    await fetch(`/api/kitchens/inventory/${itemId}`, { method: 'DELETE' });
-    fetchItems();
+    setSaveError('');
+    try {
+      const response = await fetch(`/api/kitchens/inventory/${itemId}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Could not delete the item.');
+      }
+      await fetchItems();
+    } catch (err) {
+      setSaveError(err.message);
+    }
   };
 
   return (

@@ -11,6 +11,7 @@ from routes.event_routes import event_bp
 from routes.kitchen_routes import kitchen_bp 
 from routes.volunteer_routes import volunteer_bp
 from routes.donation_routes import donation_bp
+from routes.dashboard_routes import dashboard_bp
 
 load_dotenv()
 migrate = Migrate()
@@ -33,6 +34,7 @@ def create_app():
     app.register_blueprint(kitchen_bp)
     app.register_blueprint(volunteer_bp)
     app.register_blueprint(donation_bp)
+    app.register_blueprint(dashboard_bp)
 
     return app
 

@@ -13,7 +13,7 @@ def get_matching_events(kitchen):
         KitchenRequest.event_id == Event.event_id
     ).exists()
     candidates = Event.query.filter(Event.status == "proposed", ~applied).all()
-    max_people = calculate_expected_servings(kitchen) * 3 // 2
+    max_people = kitchen.expected_servings * 3 // 2
     return [
         event for event in candidates
         if event.expected_people <= max_people and kitchen_location_matches(kitchen, event)
@@ -52,19 +52,29 @@ def calculate_expected_servings(kitchen):
 
     used_items = sorted(set().union(*recipes))
     amounts = [[recipe.get(item_id, 0) for recipe in recipes] for item_id in used_items]
-    upper_bounds = [stock.get(item_id, 0) for item_id in used_items]
-    if all(b == 0 for b in upper_bounds):
-        return 0
+    upper_bounds = [stock[item_id] for item_id in used_items]
 
     result = milp(
         c=[-1] * len(recipes),
         integrality=[1] * len(recipes),
         constraints=LinearConstraint(amounts, 0, upper_bounds),
-        options={"mip_rel_gap": 0},
+        options={"mip_rel_gap": 0.05, "time_limit": 1.0},
     )
-    if not result.success:
+    if result.status not in (0, 1):
         raise RuntimeError(f"Could not calculate kitchen capacity: {result.message}")
-    return round(-result.fun)
+
+    # A single recipe gives a quick, feasible fallback if the time limit is reached.
+    fallback = max(min(stock[item] // quantity for item, quantity in recipe.items()) for recipe in recipes)
+    if result.x is None:
+        return fallback
+
+    servings = [round(value) for value in result.x]
+    if any(value < 0 for value in servings) or any(
+        sum(amount * value for amount, value in zip(row, servings)) > stock_limit
+        for row, stock_limit in zip(amounts, upper_bounds)
+    ):
+        return fallback
+    return max(sum(servings), fallback)
 
 # --- Volunteer matching ---
 

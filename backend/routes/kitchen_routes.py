@@ -1,9 +1,33 @@
+import click
 from flask import Blueprint, request, jsonify
 from db import db
 from models import CommunityKitchen, Event, KitchenRequest, Inventory, Recipe, RecipeIngredient
 from logic.matching import get_matching_events, calculate_expected_servings
 
 kitchen_bp = Blueprint("kitchen", __name__, url_prefix="/api/kitchens")
+
+
+def save_kitchen_capacity(kitchen):
+    db.session.flush()
+    # Reload relationships and numeric values from the flushed inventory and recipes.
+    db.session.expire_all()
+    kitchen.expected_servings = calculate_expected_servings(kitchen)
+    db.session.commit()
+
+
+@kitchen_bp.cli.command("recalculate-servings")
+def recalculate_servings():
+    kitchen_ids = db.session.scalars(
+        db.select(CommunityKitchen.kitchen_id).order_by(CommunityKitchen.kitchen_id)
+    ).all()
+    updated = 0
+    for kitchen_id in kitchen_ids:
+        kitchen = db.session.get(CommunityKitchen, kitchen_id, with_for_update=True)
+        if kitchen is not None:
+            save_kitchen_capacity(kitchen)
+            updated += 1
+    click.echo(f"Recalculated serving capacity for {updated} kitchens.")
+
 
 def generate_kitchen_id():
     last = CommunityKitchen.query.order_by(CommunityKitchen.kitchen_id.desc()).first()
@@ -197,29 +221,41 @@ def add_inventory(kitchen_id):
         unit=data["unit"]
     )
     db.session.add(item)
-    db.session.commit()
+    save_kitchen_capacity(kitchen)
     return jsonify({"item_id": item.item_id}), 201
 
 @kitchen_bp.route("/inventory/<item_id>", methods=["PUT"])
 def update_inventory(item_id):
-    item = Inventory.query.get(item_id)
+    kitchen = lock_inventory_kitchen(item_id)
+    item = db.session.get(Inventory, item_id) if kitchen else None
     if not item:
         return jsonify({"error": "Not found"}), 404
     data = request.get_json()
     item.item_name = data.get("item_name", item.item_name)
     item.quantity = data.get("quantity", item.quantity)
     item.unit = data.get("unit", item.unit)
-    db.session.commit()
+    save_kitchen_capacity(kitchen)
     return jsonify({"message": "Updated"})
 
 @kitchen_bp.route("/inventory/<item_id>", methods=["DELETE"])
 def delete_inventory(item_id):
-    item = Inventory.query.get(item_id)
+    kitchen = lock_inventory_kitchen(item_id)
+    item = db.session.get(Inventory, item_id) if kitchen else None
     if not item:
         return jsonify({"error": "Not found"}), 404
+    if item.recipe_ingredients:
+        return jsonify({"error": "Remove recipes using this item before deleting it."}), 409
     db.session.delete(item)
-    db.session.commit()
+    save_kitchen_capacity(kitchen)
     return jsonify({"message": "Deleted"})
+
+
+def lock_inventory_kitchen(item_id):
+    return db.session.scalar(
+        db.select(CommunityKitchen).join(CommunityKitchen.inventory)
+        .where(Inventory.item_id == item_id).with_for_update(of=CommunityKitchen)
+    )
+
 
 # --- Recipes ---
 
@@ -260,16 +296,20 @@ def add_recipe(kitchen_id):
         ri = RecipeIngredient(recipe_id=recipe.recipe_id, item_id=ing["item_id"],
                               quantity_per_serving=ing["quantity_per_serving"])
         db.session.add(ri)
-    db.session.commit()
+    save_kitchen_capacity(kitchen)
     return jsonify({"recipe_id": recipe.recipe_id}), 201
 
 @kitchen_bp.route("/recipes/<recipe_id>", methods=["DELETE"])
 def delete_recipe(recipe_id):
-    r = Recipe.query.get(recipe_id)
+    kitchen = db.session.scalar(
+        db.select(CommunityKitchen).join(CommunityKitchen.recipes)
+        .where(Recipe.recipe_id == recipe_id).with_for_update(of=CommunityKitchen)
+    )
+    r = db.session.get(Recipe, recipe_id) if kitchen else None
     if not r:
         return jsonify({"error": "Not found"}), 404
     db.session.delete(r)
-    db.session.commit()
+    save_kitchen_capacity(kitchen)
     return jsonify({"message": "Deleted"})
 
 @kitchen_bp.route("/<kitchen_id>/expected-servings", methods=["GET"])
@@ -277,5 +317,4 @@ def expected_servings(kitchen_id):
     k = db.session.get(CommunityKitchen, kitchen_id)
     if not k:
         return jsonify({"error": "Kitchen not found."}), 404
-    val = calculate_expected_servings(k)
-    return jsonify({"expected_servings": val})
+    return jsonify({"expected_servings": k.expected_servings})

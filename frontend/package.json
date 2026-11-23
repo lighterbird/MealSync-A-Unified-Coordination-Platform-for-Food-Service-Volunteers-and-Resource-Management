@@ -10,10 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "d3-geo": "^3.1.2",
     "india-state-city": "^1.0.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router-dom": "^7.18.5"
+    "react-router-dom": "^7.18.5",
+    "vardhan-maps": "^0.20.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
