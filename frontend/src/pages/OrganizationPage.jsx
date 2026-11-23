@@ -309,7 +309,7 @@ function ManageVolunteerRequests({ event, onBack }) {
       {requests.length === 0 ? <p>No volunteers have applied yet.</p> : requests.map(r => (
         <div key={r.registration_id} className="card">
           <h3>{r.volunteer_name} ({r.volunteer_email})</h3>
-          {r.referred_by && <p style={{ color: 'green' }}>Referred by: {r.referred_by}</p>}
+          {r.referred_by && <span className="status-badge referred">referred by: {r.referred_by}</span>}
           <p>Status: {r.status}</p>
           {r.status === 'requested' && (
             <div className="card-actions">

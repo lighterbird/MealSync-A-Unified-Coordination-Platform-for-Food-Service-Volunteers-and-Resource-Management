@@ -25,7 +25,9 @@ export default function App() {
   };
 
   // Wrapper to clear user on logout
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const response = await fetch('/api/auth/signout', { method: 'POST' });
+    if (!response.ok) throw new Error('Sign out failed.');
     setUser(null);
     localStorage.removeItem('mealsync_user');
   };

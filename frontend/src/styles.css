@@ -179,6 +179,13 @@ body {
 
 .status-badge.requested { background: #ffe082; color: #5d4037; }
 .status-badge.registered { background: #a5d6a7; color: #1b5e20; }
+.status-badge.referred {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 2px 8px;
+  background: #a5d6a7;
+  color: #1b5e20;
+}
 .status-badge.rejected { background: #ef9a9a; color: #b71c1c; }
 .status-badge.past { background: #eeeeee; color: #555; }
 

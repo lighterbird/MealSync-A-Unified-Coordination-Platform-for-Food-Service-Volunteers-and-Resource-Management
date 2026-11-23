@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
 from db import db
@@ -69,9 +69,16 @@ def signin():
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Invalid email or password"}), 401
 
+    session["mealsync_id"] = user.mealsync_id
     return jsonify({
         "message": "Sign in successful",
         "mealsync_id": user.mealsync_id,
         "name": user.name,
         "email": user.email
     }), 200
+
+
+@auth_bp.route("/signout", methods=["POST"])
+def signout():
+    session.pop("mealsync_id", None)
+    return "", 204

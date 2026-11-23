@@ -1,11 +1,18 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 export default function SideBar({ onLogout }) {
   const navigate = useNavigate();
+  const [signOutError, setSignOutError] = useState('');
 
-  const handleSignOut = () => {
-    onLogout();
-    navigate('/');
+  const handleSignOut = async () => {
+    setSignOutError('');
+    try {
+      await onLogout();
+      navigate('/');
+    } catch {
+      setSignOutError('Could not sign out. Please try again.');
+    }
   };
 
   return (
@@ -24,6 +31,7 @@ export default function SideBar({ onLogout }) {
       <button onClick={handleSignOut} className="signout-btn">
         Sign Out
       </button>
+      {signOutError && <p className="error" role="alert">{signOutError}</p>}
     </aside>
   );
 }

@@ -26,11 +26,15 @@ export default function VolunteerPage({ user }) {
 
 function ProfileTab({ userId, onBack }) {
   const [form, setForm] = useState({
-    description: '', city: '', state: '', flexibility: 3, expertise: 1,
-    available_dates: ''
+    description: '', city: '', state: '', flexibility: 3
   });
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [availabilityEdited, setAvailabilityEdited] = useState(false);
+  const [legacyAvailability, setLegacyAvailability] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetch(`/api/volunteers/profile/${userId}`)
@@ -41,10 +45,13 @@ function ProfileTab({ userId, onBack }) {
             description: data.description || '',
             city: data.city || '',
             state: data.state || '',
-            flexibility: data.flexibility,
-            expertise: data.expertise,
-            available_dates: data.available_dates || ''
+            flexibility: data.flexibility
           });
+          const dates = data.available_dates?.match(/^(\d{4}-\d{2}-\d{2})\s*(?:,|to)\s*(\d{4}-\d{2}-\d{2})$/);
+          setStartDate(dates?.[1] || '');
+          setEndDate(dates?.[2] || '');
+          setLegacyAvailability(dates ? '' : data.available_dates || '');
+          setAvailabilityEdited(false);
         }
         setLoaded(true);
       });
@@ -52,13 +59,25 @@ function ProfileTab({ userId, onBack }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await fetch(`/api/volunteers/profile/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    });
-    setMessage('Saved!');
-    setTimeout(() => setMessage(''), 2000);
+    setMessage('');
+    setError('');
+    const payload = { ...form };
+    if (availabilityEdited || startDate || endDate) {
+      payload.available_dates = startDate && endDate ? `${startDate},${endDate}` : null;
+    }
+    try {
+      const response = await fetch(`/api/volunteers/profile/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not save your profile.');
+      if (availabilityEdited) setLegacyAvailability('');
+      setMessage('Saved!');
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   if (!loaded) return <div className="page">Loading...</div>;
@@ -68,6 +87,7 @@ function ProfileTab({ userId, onBack }) {
       <button onClick={onBack} className="button secondary">&larr; Back</button>
       <h2>Volunteer Profile</h2>
       {message && <p style={{ color: 'green' }}>{message}</p>}
+      {error && <p className="error" role="alert">{error}</p>}
       <form onSubmit={handleSubmit} className="stack-form">
         <label>Description</label>
         <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows="3" />
@@ -79,12 +99,13 @@ function ProfileTab({ userId, onBack }) {
         <select value={form.flexibility} onChange={e => setForm({...form, flexibility: parseInt(e.target.value)})}>
           {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
         </select>
-        <label>Expertise (1-5)</label>
-        <select value={form.expertise} onChange={e => setForm({...form, expertise: parseInt(e.target.value)})}>
-          {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
-        <label>Available Dates (e.g. "2026-12-01 to 2026-12-15")</label>
-        <input value={form.available_dates} onChange={e => setForm({...form, available_dates: e.target.value})} />
+        {legacyAvailability && <p>Previously saved availability: {legacyAvailability}</p>}
+        <label htmlFor="availability-start">Availability Start Date</label>
+        <input id="availability-start" type="date" value={startDate} max={endDate || undefined}
+          required={Boolean(endDate)} onChange={e => { setStartDate(e.target.value); setAvailabilityEdited(true); }} />
+        <label htmlFor="availability-end">Availability End Date</label>
+        <input id="availability-end" type="date" value={endDate} min={startDate || undefined}
+          required={Boolean(startDate)} onChange={e => { setEndDate(e.target.value); setAvailabilityEdited(true); }} />
         <button type="submit" className="button primary">Save Profile</button>
       </form>
     </div>
@@ -175,6 +196,8 @@ function RegisteredEvents({ userId, onBack }) {
   const [referTarget, setReferTarget] = useState(null);
   const [friendId, setFriendId] = useState('');
   const [referMsg, setReferMsg] = useState('');
+  const [referError, setReferError] = useState('');
+  const [sendingReferral, setSendingReferral] = useState(false);
 
   useEffect(() => {
     fetch(`/api/volunteers/registered-events/${userId}`)
@@ -182,18 +205,34 @@ function RegisteredEvents({ userId, onBack }) {
       .then(setEvents);
   }, [userId]);
 
-  const handleRefer = async () => {
-    setReferMsg('Referral feature coming soon');
-    setTimeout(() => setReferMsg(''), 3000);
-    setReferTarget(null);
-    setFriendId('');
+  const handleRefer = async (event, eventId) => {
+    event.preventDefault();
+    setReferMsg('');
+    setReferError('');
+    setSendingReferral(true);
+    try {
+      const response = await fetch('/api/volunteers/refer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: eventId, friend_mealsync_id: friendId })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not send the referral.');
+      setReferMsg(data.message);
+      setReferTarget(null);
+      setFriendId('');
+    } catch (err) {
+      setReferError(err.message);
+    } finally {
+      setSendingReferral(false);
+    }
   };
 
   return (
     <div className="page">
       <button onClick={onBack} className="button secondary">&larr; Back</button>
       <h2>Registered Events</h2>
-      {referMsg && <p style={{ color: 'green' }}>{referMsg}</p>}
+      {referMsg && <p role="status" style={{ color: 'green' }}>{referMsg}</p>}
       {events.length === 0 ? <p>No events yet.</p> : events.map(e => (
         <div key={e.registration_id} className="card">
           <h3>{e.event_id} | {e.org_name}</h3>
@@ -204,13 +243,22 @@ function RegisteredEvents({ userId, onBack }) {
           {e.tags.includes('registered') && (
             <div style={{ marginTop: '10px' }}>
               {referTarget === e.registration_id ? (
-                <div>
-                  <input placeholder="Friend's MealSync ID" value={friendId} onChange={ev => setFriendId(ev.target.value)} style={{ padding: '6px', marginRight: '10px' }} />
-                  <button onClick={handleRefer} className="button primary">Send Referral</button>
-                  <button onClick={() => setReferTarget(null)} className="button secondary" style={{ marginLeft: '5px' }}>Cancel</button>
-                </div>
+                <form onSubmit={event => handleRefer(event, e.event_id)}>
+                  {referError && <p className="error" role="alert">{referError}</p>}
+                  <input aria-label="Friend's MealSync ID" placeholder="Friend's MealSync ID" value={friendId}
+                    onChange={ev => setFriendId(ev.target.value)} required disabled={sendingReferral}
+                    style={{ padding: '6px', marginRight: '10px' }} />
+                  <button type="submit" disabled={sendingReferral} className="button primary">Send Referral</button>
+                  <button type="button" disabled={sendingReferral} onClick={() => setReferTarget(null)}
+                    className="button secondary" style={{ marginLeft: '5px' }}>Cancel</button>
+                </form>
               ) : (
-                <button onClick={() => setReferTarget(e.registration_id)} className="button secondary">Refer a Friend</button>
+                <button disabled={sendingReferral} onClick={() => {
+                  setReferTarget(e.registration_id);
+                  setFriendId('');
+                  setReferError('');
+                  setReferMsg('');
+                }} className="button secondary">Refer a Friend</button>
               )}
             </div>
           )}

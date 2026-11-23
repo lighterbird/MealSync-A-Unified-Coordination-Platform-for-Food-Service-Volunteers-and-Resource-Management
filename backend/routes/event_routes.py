@@ -114,13 +114,12 @@ def get_volunteer_requests(event_id):
     result = []
     for r in regs:
         user = User.query.get(r.volunteer_mealsync_id)
-        referrer = User.query.get(r.referred_by_mealsync_id) if r.referred_by_mealsync_id else None
         result.append({
             "registration_id": r.registration_id,
             "volunteer_name": user.name,
             "volunteer_email": user.email,
             "status": r.status,
-            "referred_by": referrer.name if referrer else None
+            "referred_by": r.referred_by_mealsync_id
         })
     return jsonify(result)
 

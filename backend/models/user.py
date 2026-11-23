@@ -22,7 +22,6 @@ class VolunteerProfile(db.Model):
     city = db.Column(db.String(100), nullable=True)
     state = db.Column(db.String(100), nullable=True)
     flexibility = db.Column(db.Integer, default=3)
-    expertise = db.Column(db.Integer, default=1)
     available_dates = db.Column(db.String(255), nullable=True)
 
     # Relationships

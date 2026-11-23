@@ -1,4 +1,6 @@
-from flask import Blueprint, request, jsonify
+from datetime import date
+
+from flask import Blueprint, request, jsonify, session
 from db import db
 from models import Event, VolunteerRegistration, VolunteerProfile, User
 from logic.matching import get_matching_events_for_volunteer
@@ -24,13 +26,21 @@ def get_profile(mealsync_id):
         "city": p.city,
         "state": p.state,
         "flexibility": p.flexibility,
-        "expertise": p.expertise,
         "available_dates": p.available_dates
     })
 
 @volunteer_bp.route("/profile/<mealsync_id>", methods=["POST", "PUT"])
 def save_profile(mealsync_id):
     data = request.get_json()
+    available_dates = data.get("available_dates")
+    if available_dates is not None:
+        try:
+            start, end = map(date.fromisoformat, available_dates.split(","))
+            if start > end or available_dates != f"{start.isoformat()},{end.isoformat()}":
+                raise ValueError
+        except (AttributeError, ValueError):
+            return jsonify({"error": "Enter a valid availability start and end date in order."}), 400
+
     p = VolunteerProfile.query.get(mealsync_id)
     if not p:
         p = VolunteerProfile(mealsync_id=mealsync_id)
@@ -39,8 +49,8 @@ def save_profile(mealsync_id):
     p.city = data.get("city", p.city)
     p.state = data.get("state", p.state)
     p.flexibility = data.get("flexibility", p.flexibility)
-    p.expertise = data.get("expertise", p.expertise)
-    p.available_dates = data.get("available_dates", p.available_dates)
+    if "available_dates" in data:
+        p.available_dates = available_dates
     db.session.commit()
     return jsonify({"message": "Profile saved"}), 200
 
@@ -93,7 +103,6 @@ def apply_for_event(event_id, mealsync_id):
 
 @volunteer_bp.route("/registered-events/<mealsync_id>", methods=["GET"])
 def registered_events(mealsync_id):
-    from datetime import date
     regs = VolunteerRegistration.query.filter_by(volunteer_mealsync_id=mealsync_id).all()
     result = []
     for r in regs:
@@ -120,9 +129,34 @@ def registered_events(mealsync_id):
         })
     return jsonify(result)
 
-# --- Refer a Friend (placeholder) ---
+# --- Refer a Friend ---
 
 @volunteer_bp.route("/refer", methods=["POST"])
 def refer_friend():
-    # Placeholder: no-op for now.
-    return jsonify({"message": "Referral feature coming soon"}), 200
+    referrer_id = session.get("mealsync_id")
+    if not referrer_id:
+        return jsonify({"error": "Sign in to send a referral."}), 401
+
+    data = request.get_json()
+    friend_id = data.get("friend_mealsync_id")
+    event_id = data.get("event_id")
+    if not isinstance(friend_id, str) or not User.query.get(friend_id.strip()):
+        return jsonify({"error": "Invalid MealSync ID."}), 404
+    friend_id = friend_id.strip()
+
+    if not isinstance(event_id, str) or not VolunteerRegistration.query.filter_by(
+        event_id=event_id, volunteer_mealsync_id=referrer_id, status="registered"
+    ).first():
+        return jsonify({"error": "You must be registered for this event to refer a friend."}), 403
+
+    friend_registration = VolunteerRegistration.query.filter_by(
+        event_id=event_id, volunteer_mealsync_id=friend_id
+    ).first()
+    if not friend_registration:
+        return jsonify({"error": "This volunteer has not applied for this event."}), 404
+    if friend_id == referrer_id:
+        return jsonify({"error": "You cannot refer yourself."}), 400
+
+    friend_registration.referred_by_mealsync_id = referrer_id
+    db.session.commit()
+    return jsonify({"message": "Referral saved."})
